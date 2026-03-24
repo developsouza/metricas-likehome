@@ -8,7 +8,7 @@ module.exports = {
             watch: false,
             env_production: {
                 NODE_ENV: "production",
-                PORT: 3001,
+                PORT: 3003,
             },
             // Reiniciar automaticamente se consumir mais de 500MB
             max_memory_restart: "500M",
