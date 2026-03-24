@@ -5,9 +5,15 @@
 # =============================================================
 set -euo pipefail
 
-# Garante que binários globais do npm (pm2, etc.) estejam no PATH
-# mesmo em sessões SSH não-interativas (GitHub Actions)
-export PATH="$PATH:/usr/local/bin:/usr/bin"
+# Node instalado via nvm — adiciona o bin ao PATH para sessões SSH não-interativas
+export NVM_DIR="${NVM_DIR:-/root/.nvm}"
+# Carrega o nvm se disponível
+[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+# Fallback: garante que o bin do node/pm2 esteja no PATH diretamente
+export PATH="$NVM_DIR/versions/node/$(ls "$NVM_DIR/versions/node" | sort -V | tail -1)/bin:$PATH"
+
+PM2=$(command -v pm2)
+echo "→ pm2: $PM2"
 
 APP_DIR="${APP_DIR:-/opt/metricas-likehome}"
 LOG_DIR="/var/log/metricas-likehome"
