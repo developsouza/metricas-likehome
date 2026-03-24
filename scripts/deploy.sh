@@ -5,15 +5,10 @@
 # =============================================================
 set -euo pipefail
 
-# Node instalado via nvm — adiciona o bin ao PATH para sessões SSH não-interativas
-export NVM_DIR="${NVM_DIR:-/root/.nvm}"
-# Carrega o nvm se disponível
-[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
-# Fallback: garante que o bin do node/pm2 esteja no PATH diretamente
-export PATH="$NVM_DIR/versions/node/$(ls "$NVM_DIR/versions/node" | sort -V | tail -1)/bin:$PATH"
-
-PM2=$(command -v pm2)
-echo "→ pm2: $PM2"
+# Caminho absoluto do pm2 (Node via nvm no servidor)
+PM2=/root/.nvm/versions/node/v24.14.0/bin/pm2
+NODE=/root/.nvm/versions/node/v24.14.0/bin/node
+export PATH="/root/.nvm/versions/node/v24.14.0/bin:$PATH"
 
 APP_DIR="${APP_DIR:-/opt/metricas-likehome}"
 LOG_DIR="/var/log/metricas-likehome"
@@ -47,18 +42,18 @@ mkdir -p "$LOG_DIR"
 if [ ! -f "$APP_DIR/backend/data/database.sqlite" ]; then
   echo "    → Banco não encontrado, executando seed..."
   cd "$APP_DIR/backend"
-  NODE_ENV=production node --disable-warning=ExperimentalWarning src/seed.js
+  NODE_ENV=production "$NODE" --disable-warning=ExperimentalWarning src/seed.js
 fi
 
 # 5. Reinicia / inicia a API com PM2
 echo "[5/5] Reiniciando API..."
 cd "$APP_DIR/backend"
-if pm2 describe metricas-likehome-api > /dev/null 2>&1; then
-  pm2 reload ecosystem.config.js --env production
+if "$PM2" describe metricas-likehome-api > /dev/null 2>&1; then
+  "$PM2" reload ecosystem.config.js --env production
 else
-  pm2 start ecosystem.config.js --env production
+  "$PM2" start ecosystem.config.js --env production
 fi
-pm2 save
+"$PM2" save
 
 echo ""
 echo "✅ Deploy concluído com sucesso!"
