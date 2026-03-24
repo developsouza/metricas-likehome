@@ -1,0 +1,50 @@
+name: Deploy — Métricas LikeHome
+
+on:
+    push:
+        branches:
+            - main
+
+    # Permite acionar o deploy manualmente pela aba Actions
+    workflow_dispatch:
+
+jobs:
+    deploy:
+        name: Deploy para servidor Linux
+        runs-on: ubuntu-latest
+
+        steps:
+            # ── 1. Checkout ──────────────────────────────────────────
+            - name: Checkout do código
+              uses: actions/checkout@v4
+
+            # ── 2. Setup Node.js (para validações locais opcionais) ──
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "22"
+                  cache: "npm"
+                  cache-dependency-path: frontend/package-lock.json
+
+            # ── 3. Deploy via SSH ────────────────────────────────────
+            - name: Deploy no servidor
+              uses: appleboy/ssh-action@v1.2.0
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USER }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  port: ${{ secrets.SSH_PORT || 22 }}
+                  script_stop: true
+                  script: |
+                      export APP_DIR="${{ secrets.APP_DIR || '/opt/metricas-likehome' }}"
+                      bash "$APP_DIR/scripts/deploy.sh"
+
+            # ── 4. Notificação de status ─────────────────────────────
+            - name: Resultado do deploy
+              if: always()
+              run: |
+                  if [ "${{ job.status }}" = "success" ]; then
+                    echo "✅ Deploy concluído com sucesso!"
+                  else
+                    echo "❌ Deploy falhou. Verifique os logs acima."
+                  fi

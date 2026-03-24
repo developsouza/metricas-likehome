@@ -1,0 +1,29 @@
+# Métricas LikeHome — Monorepo Root
+
+# ── Node ────────────────────────────────────
+node_modules/
+
+# ── Ambiente ─────────────────────────────────
+.env
+.env.local
+.env.production
+.env.*.local
+
+# ── Frontend build ───────────────────────────
+frontend/dist/
+frontend/.vite/
+
+# ── Banco de dados ───────────────────────────
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+backend/data/
+
+# ── Logs ─────────────────────────────────────
+*.log
+logs/
+
+# ── Editores / OS ────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json
