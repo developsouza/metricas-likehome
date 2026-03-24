@@ -95,7 +95,7 @@ cat ~/.ssh/metricas_deploy
 
 ```bash
 apt-get install -y certbot python3-certbot-nginx
-certbot --nginx -d metricas.seudominio.com.br
+certbot --nginx -d metricaslike.g3tsistemas.com.br
 ```
 
 ---
