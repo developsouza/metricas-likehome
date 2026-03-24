@@ -5,6 +5,10 @@
 # =============================================================
 set -euo pipefail
 
+# Garante que binários globais do npm (pm2, etc.) estejam no PATH
+# mesmo em sessões SSH não-interativas (GitHub Actions)
+export PATH="$PATH:/usr/local/bin:/usr/bin"
+
 APP_DIR="${APP_DIR:-/opt/metricas-likehome}"
 LOG_DIR="/var/log/metricas-likehome"
 
