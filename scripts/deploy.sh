@@ -39,13 +39,12 @@ mkdir -p "$APP_DIR/backend/data"
 mkdir -p "$LOG_DIR"
 
 # ── Detecção automática de mudança no seed ─────────────────────────────────
-# Calcula hash combinado de seed.js + CSV. Se mudaram desde o último deploy,
-# o banco é recriado automaticamente com os dados mais recentes.
+# Calcula hash do seed.js. Se mudou desde o último deploy,
+# apenas usuários e indicadores são recriados (dados operacionais preservados).
 SEED_FILE="$APP_DIR/backend/src/seed.js"
-CSV_FILE="$APP_DIR/Relatorio Comercial - LikeHome v3(BaseDados).csv"
 SEED_HASH_FILE="$APP_DIR/backend/data/.seed_hash"
 
-CURRENT_HASH=$(sha256sum "$SEED_FILE" "$CSV_FILE" 2>/dev/null | sha256sum | awk '{print $1}')
+CURRENT_HASH=$(sha256sum "$SEED_FILE" 2>/dev/null | awk '{print $1}')
 STORED_HASH=""
 [ -f "$SEED_HASH_FILE" ] && STORED_HASH=$(cat "$SEED_HASH_FILE")
 
@@ -55,10 +54,10 @@ if [ ! -f "$APP_DIR/backend/data/database.sqlite" ]; then
   SEED_REASON="Banco não encontrado — executando seed inicial..."
   SHOULD_SEED=true
 elif [ "$FORCE_RESEED" = "true" ]; then
-  SEED_REASON="FORCE_RESEED ativado — recriando banco com dados atuais..."
+  SEED_REASON="FORCE_RESEED ativado — recriando usuários e indicadores..."
   SHOULD_SEED=true
 elif [ "$CURRENT_HASH" != "$STORED_HASH" ]; then
-  SEED_REASON="seed.js ou CSV foram alterados — recriando banco automaticamente..."
+  SEED_REASON="seed.js foi alterado — reaplicando usuários e indicadores..."
   SHOULD_SEED=true
 else
   SHOULD_SEED=false
@@ -66,9 +65,11 @@ fi
 
 if [ "$SHOULD_SEED" = "true" ]; then
   echo "    → $SEED_REASON"
-  rm -f "$APP_DIR/backend/data/database.sqlite"
-  rm -f "$APP_DIR/backend/data/database.sqlite-shm"
-  rm -f "$APP_DIR/backend/data/database.sqlite-wal"
+  if [ "$FORCE_RESEED" = "true" ] || [ ! -f "$APP_DIR/backend/data/database.sqlite" ]; then
+    rm -f "$APP_DIR/backend/data/database.sqlite"
+    rm -f "$APP_DIR/backend/data/database.sqlite-shm"
+    rm -f "$APP_DIR/backend/data/database.sqlite-wal"
+  fi
   cd "$APP_DIR/backend"
   NODE_ENV=production DB_PATH="$APP_DIR/backend/data/database.sqlite" "$NODE" --disable-warning=ExperimentalWarning src/seed.js
   echo "$CURRENT_HASH" > "$SEED_HASH_FILE"
