@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 import { fmtData, labelStatus } from "../../utils/format";
+import Paginacao from "../../components/Paginacao";
+
+const POR_PAGINA = 20;
 
 const STATUS_LIST = ["Prospeccao", "Reuniao", "Fechamento", "Integracao", "Ativo", "Baixa"];
 const TIPOS = ["Studio", "Apartamento 1Q", "Apartamento 2Q", "Apartamento 3Q", "Casa 2Q", "Casa 3Q", "Cobertura"];
@@ -268,6 +271,7 @@ export default function Unidades() {
     const [filtroStatus, setFiltroStatus] = useState("");
     const [filtroEmp, setFiltroEmp] = useState("");
     const [busca, setBusca] = useState("");
+    const [pagina, setPagina] = useState(1);
 
     useEffect(() => {
         carregarAuxiliares();
@@ -275,6 +279,9 @@ export default function Unidades() {
     useEffect(() => {
         carregar();
     }, [filtroStatus, filtroEmp]);
+    useEffect(() => {
+        setPagina(1);
+    }, [filtroStatus, filtroEmp, busca]);
 
     async function carregarAuxiliares() {
         const [re, rp, ru] = await Promise.all([api.get("/empreendimentos"), api.get("/proprietarios"), api.get("/usuarios")]);
@@ -308,6 +315,9 @@ export default function Unidades() {
                   u.responsavel_nome?.toLowerCase().includes(busca.toLowerCase()),
           )
         : lista;
+
+    const totalPaginas = Math.max(1, Math.ceil(listaBuscada.length / POR_PAGINA));
+    const listaPaginada = listaBuscada.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
     return (
         <div>
@@ -396,7 +406,7 @@ export default function Unidades() {
                                             </td>
                                         </tr>
                                     ) : (
-                                        listaBuscada.map((u) => (
+                                        listaPaginada.map((u) => (
                                             <tr key={u.id}>
                                                 <td style={{ fontWeight: 600 }}>{u.empreendimento_nome}</td>
                                                 <td>{u.numero}</td>
@@ -452,6 +462,13 @@ export default function Unidades() {
                                     )}
                                 </tbody>
                             </table>
+                            <Paginacao
+                                pagina={pagina}
+                                totalPaginas={totalPaginas}
+                                total={listaBuscada.length}
+                                porPagina={POR_PAGINA}
+                                onChange={setPagina}
+                            />
                         </div>
                     )}
                 </div>

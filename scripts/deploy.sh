@@ -38,11 +38,20 @@ echo "[4/5] Verificando estrutura de dados..."
 mkdir -p "$APP_DIR/backend/data"
 mkdir -p "$LOG_DIR"
 
-# Cria o banco se não existir (primeiro deploy)
-if [ ! -f "$APP_DIR/backend/data/database.sqlite" ]; then
-  echo "    → Banco não encontrado, executando seed..."
+# Executa seed se: banco não existir OU FORCE_RESEED=true
+# Uso: FORCE_RESEED=true APP_DIR=/opt/metricas-likehome bash deploy.sh
+FORCE_RESEED="${FORCE_RESEED:-false}"
+if [ ! -f "$APP_DIR/backend/data/database.sqlite" ] || [ "$FORCE_RESEED" = "true" ]; then
+  if [ "$FORCE_RESEED" = "true" ]; then
+    echo "    → FORCE_RESEED ativado — removendo banco anterior e reseedando com dados reais..."
+    rm -f "$APP_DIR/backend/data/database.sqlite"
+    rm -f "$APP_DIR/backend/data/database.sqlite-shm"
+    rm -f "$APP_DIR/backend/data/database.sqlite-wal"
+  else
+    echo "    → Banco não encontrado, executando seed inicial..."
+  fi
   cd "$APP_DIR/backend"
-  NODE_ENV=production "$NODE" --disable-warning=ExperimentalWarning src/seed.js
+  NODE_ENV=production DB_PATH="$APP_DIR/backend/data/database.sqlite" "$NODE" --disable-warning=ExperimentalWarning src/seed.js
 fi
 
 # 5. Reinicia / inicia a API com PM2

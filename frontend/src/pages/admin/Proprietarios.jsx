@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import Paginacao from "../../components/Paginacao";
+
+const POR_PAGINA = 20;
 
 function Modal({ prop, onClose, onSave }) {
     const [form, setForm] = useState(prop || { nome: "", cpf_cnpj: "", email: "", telefone: "" });
@@ -77,6 +80,7 @@ export default function Proprietarios() {
     const [modal, setModal] = useState(false);
     const [editando, setEditando] = useState(null);
     const [busca, setBusca] = useState("");
+    const [pagina, setPagina] = useState(1);
 
     useEffect(() => {
         carregar();
@@ -108,6 +112,13 @@ export default function Proprietarios() {
                   p.telefone?.toLowerCase().includes(busca.toLowerCase()),
           )
         : lista;
+
+    const totalPaginas = Math.max(1, Math.ceil(listaFiltrada.length / POR_PAGINA));
+    const listaPaginada = listaFiltrada.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+
+    useEffect(() => {
+        setPagina(1);
+    }, [busca]);
 
     return (
         <div>
@@ -167,7 +178,7 @@ export default function Proprietarios() {
                                             </td>
                                         </tr>
                                     ) : (
-                                        listaFiltrada.map((p) => (
+                                        listaPaginada.map((p) => (
                                             <tr key={p.id}>
                                                 <td style={{ fontWeight: 600 }}>{p.nome}</td>
                                                 <td className="text-muted">{p.cpf_cnpj || "—"}</td>
@@ -214,6 +225,13 @@ export default function Proprietarios() {
                                     )}
                                 </tbody>
                             </table>
+                            <Paginacao
+                                pagina={pagina}
+                                totalPaginas={totalPaginas}
+                                total={listaFiltrada.length}
+                                porPagina={POR_PAGINA}
+                                onChange={setPagina}
+                            />
                         </div>
                     )}
                 </div>

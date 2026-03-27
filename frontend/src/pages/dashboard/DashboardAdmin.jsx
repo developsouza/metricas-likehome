@@ -1,39 +1,37 @@
-import { useState, useEffect } from "react";
-import {
-    LineChart,
-    Line,
-    BarChart,
-    Bar,
-    ComposedChart,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    Legend,
-    ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
-} from "recharts";
+import { useState, useEffect, useCallback } from "react";
+import { ComposedChart, Bar, Line, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import api from "../../services/api";
-import { useAuth } from "../../contexts/AuthContext";
-import { fmtValor, fmtMoeda, fmtPct, fmtCompetencia, competenciaAtual, labelStatus, labelDepto } from "../../utils/format";
+import { fmtValor, fmtCompetencia, competenciaAtual, labelStatus, labelDepto } from "../../utils/format";
+import Paginacao from "../../components/Paginacao";
 
-const CORES_STATUS = { Prospeccao: "#3b82f6", Reuniao: "#8b5cf6", Fechamento: "#f97316", Integracao: "#eab308", Ativo: "#22c55e", Baixa: "#9ca3af" };
-const CORES_DEPTO = { Marketing: "#3b82f6", Comercial: "#10b981", Atendimento: "#f59e0b", Precificacao: "#8b5cf6", Financeiro: "#ef4444" };
+const POR_PAGINA_EMP = 15;
 
-function KpiCard({ label, value, meta, cor, trend, sub }) {
+const CORES_STATUS = {
+    Prospeccao: "#3b82f6",
+    Reuniao: "#8b5cf6",
+    Fechamento: "#f97316",
+    Integracao: "#eab308",
+    Ativo: "#22c55e",
+    Baixa: "#9ca3af",
+};
+const CORES_DEPTO = {
+    Marketing: "#3b82f6",
+    Comercial: "#10b981",
+    Atendimento: "#f59e0b",
+    Precificacao: "#8b5cf6",
+    Financeiro: "#ef4444",
+};
+const CORES_PIE = ["#0f4c81", "#22c55e", "#f97316", "#8b5cf6", "#ef4444", "#eab308", "#10b981", "#9ca3af"];
+
+function KpiCard({ label, value, sub, cor, small }) {
     return (
         <div className="kpi-card" style={{ "--kpi-color": cor }}>
             <div className="kpi-label">{label}</div>
-            <div className="kpi-value">{value}</div>
-            {meta && (
-                <div className="kpi-meta">
-                    Meta: {meta} {trend && <span className={`kpi-trend ${trend}`}>▲</span>}
-                </div>
-            )}
+            <div className="kpi-value" style={small ? { fontSize: 24 } : {}}>
+                {value}
+            </div>
             {sub && (
-                <div className="kpi-meta" style={{ opacity: 0.75, fontSize: 11 }}>
+                <div className="kpi-meta" style={{ opacity: 0.75 }}>
                     {sub}
                 </div>
             )}
@@ -42,16 +40,12 @@ function KpiCard({ label, value, meta, cor, trend, sub }) {
 }
 
 export default function DashboardAdmin() {
-    const { usuario } = useAuth();
     const [data, setData] = useState(null);
     const [comp, setComp] = useState(competenciaAtual());
     const [loading, setLoading] = useState(true);
+    const [paginaEmp, setPaginaEmp] = useState(1);
 
-    useEffect(() => {
-        carregar();
-    }, [comp]);
-
-    async function carregar() {
+    const carregar = useCallback(async () => {
         setLoading(true);
         try {
             const r = await api.get(`/dashboard/admin?competencia=${comp}`);
@@ -59,7 +53,11 @@ export default function DashboardAdmin() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [comp]);
+
+    useEffect(() => {
+        carregar();
+    }, [carregar]);
 
     if (loading)
         return (
@@ -82,22 +80,39 @@ export default function DashboardAdmin() {
         pipeline,
         krisPorDepto,
         alertas,
-        evolucaoReceita,
-        evolucaoOcupacao,
-        evolucaoLeads,
-        financeiroMes,
-        empreendimentos,
-        crescimentoLiquido,
         evolucaoCrescimento,
+        empreendimentos,
+        distBPO,
+        distComissao,
+        distResponsavel,
+        crescimentoLiquido,
     } = data;
 
-    const evolucaoReceitaFmt = evolucaoReceita.map((e) => ({ ...e, name: fmtCompetencia(e.competencia) }));
-    const evolucaoOcupacaoFmt = evolucaoOcupacao.map((e) => ({ ...e, name: fmtCompetencia(e.competencia) }));
-    const evolucaoLeadsFmt = evolucaoLeads.map((e) => ({ ...e, name: fmtCompetencia(e.competencia) }));
-    const evolucaoCrescimentoFmt = (evolucaoCrescimento || []).map((e) => ({ ...e, name: fmtCompetencia(e.competencia) }));
-    const pipelineChart = pipeline.map((p) => ({ name: labelStatus(p.status), value: p.total, fill: CORES_STATUS[p.status] }));
+    // Formata eixo X do gráfico de crescimento
+    const evolucaoFmt = (evolucaoCrescimento || []).map((e) => ({
+        ...e,
+        name: fmtCompetencia(e.competencia),
+    }));
 
-    // KRIs agrupados por depto para tabela
+    // Pie do pipeline
+    const pipelineChart = pipeline
+        .map((p) => ({
+            name: labelStatus(p.status),
+            value: p.total,
+            fill: CORES_STATUS[p.status] || "#9ca3af",
+        }))
+        .filter((p) => p.value > 0);
+
+    // Top 15 empreendimentos com unidades ativas
+    const topEmps = [...empreendimentos]
+        .filter((e) => e.ativas > 0)
+        .slice(0, 15)
+        .map((e) => ({ name: e.nome.length > 18 ? e.nome.substring(0, 18) + "…" : e.nome, ativas: e.ativas }));
+    // Empreendimentos com paginação para a tabela
+    const empsComUnidades = empreendimentos.filter((e) => e.total_unidades > 0);
+    const totalPaginasEmp = Math.max(1, Math.ceil(empsComUnidades.length / POR_PAGINA_EMP));
+    const empsPaginados = empsComUnidades.slice((paginaEmp - 1) * POR_PAGINA_EMP, paginaEmp * POR_PAGINA_EMP);
+    // KRIs por depto
     const deptoMap = {};
     krisPorDepto.forEach((k) => {
         if (!deptoMap[k.departamento]) deptoMap[k.departamento] = [];
@@ -106,19 +121,19 @@ export default function DashboardAdmin() {
 
     return (
         <div>
-            {/* Seletor de competência */}
+            {/* Cabeçalho */}
             <div className="page-header">
                 <div>
-                    <h2>Dashboard Administrativo</h2>
-                    <p>Visão consolidada de todos os indicadores</p>
+                    <h2>Dashboard Administrativa</h2>
+                    <p>Visão consolidada — dados reais do portfólio</p>
                 </div>
                 <div className="flex-gap">
                     <input type="month" className="form-control" value={comp} onChange={(e) => setComp(e.target.value)} style={{ width: "auto" }} />
                 </div>
             </div>
 
-            {/* Alertas */}
-            {alertas.length > 0 && (
+            {/* Alertas de KRI */}
+            {alertas && alertas.length > 0 && (
                 <div style={{ marginBottom: 20 }}>
                     {alertas.map((a, i) => (
                         <div key={i} className="alert alert-warning">
@@ -132,82 +147,60 @@ export default function DashboardAdmin() {
                 </div>
             )}
 
-            {/* KPIs Principais */}
+            {/* KPI Cards — derivados das unidades reais */}
             <div className="kpi-grid">
-                <KpiCard label="Unidades Ativas" value={resumo.unidadesAtivas} meta={`${resumo.totalUnidades} total`} cor="#22c55e" />
-                <KpiCard label="Nota Média OTAs" value={resumo.notaOTA ? resumo.notaOTA.toFixed(1) : "—"} meta="Meta: 4,7" cor="#f59e0b" />
-                <KpiCard label="Taxa de Ocupação" value={resumo.taxaOcupacao ? `${resumo.taxaOcupacao}%` : "—"} meta="Meta: 70%" cor="#3b82f6" />
-                <KpiCard label="Empreendimentos" value={empreendimentos.length} meta="Ativos" cor="#8b5cf6" />
+                <KpiCard label="Unidades Ativas" value={resumo.unidadesAtivas} sub={`de ${resumo.totalUnidades} no portfólio`} cor="#22c55e" />
+                <KpiCard label="Em Integração" value={resumo.emIntegracao} sub="aguardando ativação" cor="#eab308" />
+                <KpiCard label="Fechamento / Pendente" value={resumo.emFechamento} sub="contrato pendente" cor="#f97316" />
+                <KpiCard label="Saídas (Baixa)" value={resumo.baixas} sub="unidades encerradas" cor="#9ca3af" />
                 <KpiCard
                     label="Crescimento Líquido"
-                    value={crescimentoLiquido ? `${crescimentoLiquido.liquido >= 0 ? "+" : ""}${crescimentoLiquido.liquido} un.` : "—"}
-                    meta={crescimentoLiquido?.meta}
+                    value={crescimentoLiquido ? `${crescimentoLiquido.liquido >= 0 ? "+" : ""}${crescimentoLiquido.liquido}` : "—"}
+                    sub={crescimentoLiquido ? `↑ ${crescimentoLiquido.captadas} captadas · ↓ ${crescimentoLiquido.perdidas} saídas` : null}
                     cor={
-                        crescimentoLiquido && crescimentoLiquido.liquido >= crescimentoLiquido.meta
+                        crescimentoLiquido && crescimentoLiquido.liquido >= (crescimentoLiquido.meta || 5)
                             ? "#22c55e"
                             : crescimentoLiquido && crescimentoLiquido.liquido >= 0
                               ? "#f59e0b"
                               : "#ef4444"
                     }
-                    sub={crescimentoLiquido ? `↑ ${crescimentoLiquido.captadas} captadas · ↓ ${crescimentoLiquido.perdidas} baixas` : null}
                 />
             </div>
 
-            {/* Gráficos */}
+            {/* Gráficos principais */}
             <div className="charts-grid">
-                <div className="chart-card">
-                    <h3>📈 Receita Operacional (EBITDA) — Últimos 6 meses</h3>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={evolucaoReceitaFmt}>
+                {/* Evolução de captações e saídas (12 meses, dados reais por data_ativacao/data_baixa) */}
+                <div className="chart-card" style={{ gridColumn: "span 2" }}>
+                    <h3>📈 Captações e Saídas por Mês — Últimos 12 meses (dados reais)</h3>
+                    <ResponsiveContainer width="100%" height={240}>
+                        <ComposedChart data={evolucaoFmt}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis dataKey="name" fontSize={11} />
-                            <YAxis fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                            <Tooltip formatter={(v) => fmtMoeda(v)} />
-                            <Legend fontSize={11} />
-                            <Line type="monotone" dataKey="valor_realizado" name="Realizado" stroke="#0f4c81" strokeWidth={2} dot={{ r: 4 }} />
-                            <Line type="monotone" dataKey="meta" name="Meta" stroke="#e8a020" strokeWidth={1.5} strokeDasharray="5 5" dot={false} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
-
-                <div className="chart-card">
-                    <h3>🏠 Taxa de Ocupação (%) — Últimos 6 meses</h3>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={evolucaoOcupacaoFmt}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis dataKey="name" fontSize={11} />
-                            <YAxis fontSize={11} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                            <Tooltip formatter={(v) => `${v}%`} />
-                            <Bar dataKey="valor_realizado" name="Ocupação" fill="#0f4c81" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-
-                <div className="chart-card">
-                    <h3>🎯 Leads de Proprietários — Últimos 6 meses</h3>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={evolucaoLeadsFmt}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis dataKey="name" fontSize={11} />
+                            <XAxis dataKey="name" fontSize={10} />
                             <YAxis fontSize={11} />
                             <Tooltip />
-                            <Bar dataKey="valor_realizado" name="Leads" fill="#10b981" radius={[4, 4, 0, 0]} />
-                        </BarChart>
+                            <Legend fontSize={11} />
+                            <Bar dataKey="captadas" name="Captadas" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="perdidas" name="Saídas" fill="#9ca3af" radius={[4, 4, 0, 0]} />
+                            <Line type="monotone" dataKey="liquido" name="Líquido" stroke="#0f4c81" strokeWidth={2} dot={{ r: 3 }} />
+                        </ComposedChart>
                     </ResponsiveContainer>
                 </div>
 
+                {/* Pipeline (donut) */}
                 <div className="chart-card">
-                    <h3>🔄 Pipeline de Unidades</h3>
-                    <ResponsiveContainer width="100%" height={220}>
+                    <h3>🔄 Pipeline por Status</h3>
+                    <ResponsiveContainer width="100%" height={240}>
                         <PieChart>
                             <Pie
                                 data={pipelineChart}
                                 cx="50%"
                                 cy="50%"
-                                outerRadius={80}
+                                innerRadius={55}
+                                outerRadius={90}
                                 dataKey="value"
                                 label={({ name, value }) => `${name}: ${value}`}
-                                fontSize={11}
+                                labelLine={false}
+                                fontSize={10}
                             >
                                 {pipelineChart.map((entry, i) => (
                                     <Cell key={i} fill={entry.fill} />
@@ -218,19 +211,79 @@ export default function DashboardAdmin() {
                     </ResponsiveContainer>
                 </div>
 
+                {/* Top empreendimentos */}
                 <div className="chart-card">
-                    <h3>📈 Crescimento Líquido de Unidades — Últimos 6 meses</h3>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <ComposedChart data={evolucaoCrescimentoFmt}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis dataKey="name" fontSize={11} />
-                            <YAxis fontSize={11} />
+                    <h3>🏢 Top Empreendimentos (unidades ativas)</h3>
+                    <ResponsiveContainer width="100%" height={240}>
+                        <BarChart data={topEmps} layout="vertical" margin={{ left: 10, right: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                            <XAxis type="number" fontSize={10} />
+                            <YAxis dataKey="name" type="category" fontSize={10} width={120} />
                             <Tooltip />
-                            <Legend fontSize={11} />
-                            <Bar dataKey="captadas" name="Captadas" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="perdidas" name="Baixas" fill="#9ca3af" radius={[4, 4, 0, 0]} />
-                            <Line type="monotone" dataKey="liquido" name="Líquido" stroke="#0f4c81" strokeWidth={2} dot={{ r: 4 }} />
-                        </ComposedChart>
+                            <Bar dataKey="ativas" name="Ativas" fill="#0f4c81" radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* BPO distribuição */}
+                <div className="chart-card">
+                    <h3>🤝 Distribuição BPO (unidades ativas)</h3>
+                    <ResponsiveContainer width="100%" height={240}>
+                        <PieChart>
+                            <Pie
+                                data={distBPO || []}
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={90}
+                                dataKey="total"
+                                nameKey="bpo"
+                                label={({ bpo, total }) => `${bpo}: ${total}`}
+                                fontSize={11}
+                            >
+                                {(distBPO || []).map((_, i) => (
+                                    <Cell key={i} fill={CORES_PIE[i % CORES_PIE.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip formatter={(v, n, p) => [v, p.payload.bpo]} />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* % Administração distribuição */}
+                <div className="chart-card">
+                    <h3>💼 Distribuição % Administração</h3>
+                    <ResponsiveContainer width="100%" height={240}>
+                        <PieChart>
+                            <Pie
+                                data={distComissao || []}
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={90}
+                                dataKey="total"
+                                nameKey="comissao"
+                                label={({ comissao, total }) => `${comissao}%: ${total}`}
+                                fontSize={11}
+                            >
+                                {(distComissao || []).map((_, i) => (
+                                    <Cell key={i} fill={CORES_PIE[i % CORES_PIE.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip formatter={(v, n, p) => [v, `${p.payload.comissao}%`]} />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Responsável distribuição */}
+                <div className="chart-card">
+                    <h3>👤 Unidades Ativas por Responsável</h3>
+                    <ResponsiveContainer width="100%" height={240}>
+                        <BarChart data={distResponsavel || []} layout="vertical" margin={{ left: 10, right: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                            <XAxis type="number" fontSize={10} />
+                            <YAxis dataKey="responsavel" type="category" fontSize={11} width={130} />
+                            <Tooltip />
+                            <Bar dataKey="total" name="Unidades" fill="#10b981" radius={[0, 4, 4, 0]} />
+                        </BarChart>
                     </ResponsiveContainer>
                 </div>
             </div>
@@ -257,7 +310,8 @@ export default function DashboardAdmin() {
                                 {krisPorDepto.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} style={{ textAlign: "center", padding: 32, color: "var(--neutral-400)" }}>
-                                            Nenhum lançamento neste período
+                                            Nenhum lançamento manual neste período. O crescimento líquido é calculado automaticamente pelas datas das
+                                            unidades.
                                         </td>
                                     </tr>
                                 ) : (
@@ -275,8 +329,8 @@ export default function DashboardAdmin() {
                                                 <td>
                                                     <span
                                                         style={{
-                                                            background: CORES_DEPTO[k.departamento] + "20",
-                                                            color: CORES_DEPTO[k.departamento],
+                                                            background: (CORES_DEPTO[k.departamento] || "#888") + "20",
+                                                            color: CORES_DEPTO[k.departamento] || "#888",
                                                             padding: "2px 8px",
                                                             borderRadius: 20,
                                                             fontSize: 11,
@@ -293,10 +347,11 @@ export default function DashboardAdmin() {
                                                 <td className="text-muted">{fmtValor(k.meta, k.unidade_medida)}</td>
                                                 <td>
                                                     {k.percentual !== null && (
-                                                        <div>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                                             <span
                                                                 style={{
                                                                     fontWeight: 600,
+                                                                    minWidth: 40,
                                                                     color:
                                                                         status === "acima"
                                                                             ? "var(--success)"
@@ -307,7 +362,7 @@ export default function DashboardAdmin() {
                                                             >
                                                                 {k.percentual}%
                                                             </span>
-                                                            <div className="progress-bar" style={{ width: 80 }}>
+                                                            <div className="progress-bar" style={{ width: 70 }}>
                                                                 <div
                                                                     className="progress-bar-fill"
                                                                     style={{
@@ -327,12 +382,12 @@ export default function DashboardAdmin() {
                                                 <td>
                                                     <span className={`status-badge s-${status}`}>
                                                         {status === "acima"
-                                                            ? "Acima da meta"
+                                                            ? "Acima"
                                                             : status === "atencao"
                                                               ? "Atenção"
                                                               : status === "abaixo"
                                                                 ? "Abaixo"
-                                                                : "Sem lançamento"}
+                                                                : "Calculado"}
                                                     </span>
                                                 </td>
                                             </tr>
@@ -345,10 +400,10 @@ export default function DashboardAdmin() {
                 </div>
             </div>
 
-            {/* Empreendimentos */}
+            {/* Tabela de Empreendimentos */}
             <div className="card">
                 <div className="card-header">
-                    <span className="card-title">Unidades por Empreendimento</span>
+                    <span className="card-title">Portfólio por Empreendimento</span>
                 </div>
                 <div className="card-body">
                     <div className="table-container">
@@ -356,28 +411,54 @@ export default function DashboardAdmin() {
                             <thead>
                                 <tr>
                                     <th>Empreendimento</th>
-                                    <th>Cidade</th>
-                                    <th>Total Unidades</th>
-                                    <th>Ativas</th>
-                                    <th>Baixas</th>
+                                    <th style={{ textAlign: "center" }}>Total</th>
+                                    <th style={{ textAlign: "center" }}>Ativas</th>
+                                    <th style={{ textAlign: "center" }}>Integração</th>
+                                    <th style={{ textAlign: "center" }}>Fechamento</th>
+                                    <th style={{ textAlign: "center" }}>Baixas</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {empreendimentos.map((e, i) => (
+                                {empsPaginados.map((e, i) => (
                                     <tr key={i}>
                                         <td style={{ fontWeight: 600 }}>{e.nome}</td>
-                                        <td className="text-muted">{e.cidade || "—"}</td>
-                                        <td>{e.total_unidades}</td>
-                                        <td>
-                                            <span className="status-badge s-ativo">{e.ativas}</span>
+                                        <td style={{ textAlign: "center" }}>{e.total_unidades}</td>
+                                        <td style={{ textAlign: "center" }}>
+                                            {e.ativas > 0 && <span className="status-badge s-ativo">{e.ativas}</span>}
+                                            {e.ativas === 0 && <span className="text-muted">—</span>}
                                         </td>
-                                        <td>
-                                            <span className="status-badge s-baixa">{e.baixas}</span>
+                                        <td style={{ textAlign: "center" }}>
+                                            {e.integracao > 0 ? (
+                                                <span className="status-badge s-integracao">{e.integracao}</span>
+                                            ) : (
+                                                <span className="text-muted">—</span>
+                                            )}
+                                        </td>
+                                        <td style={{ textAlign: "center" }}>
+                                            {e.fechamento > 0 ? (
+                                                <span className="status-badge s-fechamento">{e.fechamento}</span>
+                                            ) : (
+                                                <span className="text-muted">—</span>
+                                            )}
+                                        </td>
+                                        <td style={{ textAlign: "center" }}>
+                                            {e.baixas > 0 ? (
+                                                <span className="status-badge s-baixa">{e.baixas}</span>
+                                            ) : (
+                                                <span className="text-muted">—</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                        <Paginacao
+                            pagina={paginaEmp}
+                            totalPaginas={totalPaginasEmp}
+                            total={empsComUnidades.length}
+                            porPagina={POR_PAGINA_EMP}
+                            onChange={setPaginaEmp}
+                        />
                     </div>
                 </div>
             </div>

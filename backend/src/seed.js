@@ -288,43 +288,79 @@ insertInd.run("Financeiro", "KRI", "Resultado mensal consolidado (DRE)", "Result
 insertInd.run("Financeiro", "KPI", "Receita média por unidade", "Receita total / unidades ativas", "R$", 3500);
 insertInd.run("Financeiro", "KPI", "Previsibilidade de fluxo de caixa", "Realizado / projetado (%)", "%", 90);
 
-// ─── LANÇAMENTOS DE EXEMPLO ────────────────────────────────────────────────────
-const insertLanc = db.prepare(`
-    INSERT OR IGNORE INTO lancamentos_indicadores (indicador_id, competencia, valor_realizado, meta, usuario_id)
-    VALUES (?, ?, ?, ?, ?)
-`);
+// ─── LANÇAMENTOS DERIVADOS DO CSV (Indicador Comercial) ──────────────────────
+console.log("📈 Gerando lançamentos históricos derivados do CSV...");
 
-const meses = ["2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03"];
+// Indicador: Crescimento líquido de unidades (Comercial KRI)
+const indCrescimento = db
+    .prepare(`SELECT id, meta_padrao FROM indicadores WHERE nome = 'Crescimento líquido de unidades' AND departamento = 'Comercial'`)
+    .get();
 
-const lancamentos = [
-    // id  values                             meta   dep
-    [1, [18, 22, 25, 19, 24, 27], 20],
-    [2, [85, 92, 110, 78, 95, 103], 100],
-    [3, [55, 48, 45, 60, 47, 42], 50],
-    [4, [8, 11, 13, 9, 12, 14], 10],
-    [5, [35, 42, 48, 38, 44, 50], 40],
-    [6, [3, 5, 6, 2, 4, 5], 5],
-    [7, [10, 14, 16, 11, 15, 17], 15],
-    [8, [55, 62, 68, 52, 65, 70], 60],
-    [9, [18, 14, 12, 20, 15, 13], 15],
-    [10, [4.5, 4.6, 4.7, 4.4, 4.7, 4.8], 4.7],
-    [11, [2.5, 2.1, 1.8, 2.8, 2.0, 1.6], 2],
-    [12, [72, 76, 80, 70, 78, 82], 80],
-    [13, [0.08, 0.06, 0.05, 0.09, 0.05, 0.04], 0.05],
-    [14, [3200, 3400, 3800, 3100, 3500, 3700], 3500],
-    [15, [68, 72, 75, 65, 71, 74], 70],
-    [16, [230, 245, 260, 225, 248, 255], 250],
-    [17, [4, 3, 3, 5, 3, 2], 3],
-    [18, [42000, 48000, 55000, 40000, 50000, 52000], 50000],
-    [19, [28000, 32000, 38000, 25000, 33000, 35000], 30000],
-    [20, [3200, 3400, 3800, 3100, 3500, 3700], 3500],
-    [21, [85, 88, 92, 83, 90, 91], 90],
-];
+if (indCrescimento) {
+    // Captadas por mês (data_ativacao)
+    const captadasPorMes = db
+        .prepare(
+            `
+            SELECT strftime('%Y-%m', data_ativacao) AS competencia, COUNT(*) AS total
+            FROM unidades
+            WHERE data_ativacao IS NOT NULL
+            GROUP BY competencia
+            ORDER BY competencia
+        `,
+        )
+        .all();
 
-for (const [indId, valores, meta] of lancamentos) {
-    meses.forEach((mes, i) => {
-        insertLanc.run(indId, mes, valores[i], meta, pHenriqueId);
-    });
+    // Saídas por mês (data_baixa) — apenas Baixa (Inativo)
+    const saidasPorMes = db
+        .prepare(
+            `
+            SELECT strftime('%Y-%m', data_baixa) AS competencia, COUNT(*) AS total
+            FROM unidades
+            WHERE data_baixa IS NOT NULL
+            GROUP BY competencia
+            ORDER BY competencia
+        `,
+        )
+        .all();
+
+    // Mesclar em map competencia → { captadas, saidas }
+    const mesesMap = new Map();
+    for (const r of captadasPorMes) {
+        mesesMap.set(r.competencia, { captadas: r.total, saidas: 0 });
+    }
+    for (const r of saidasPorMes) {
+        const entry = mesesMap.get(r.competencia) || { captadas: 0, saidas: 0 };
+        entry.saidas = r.total;
+        mesesMap.set(r.competencia, entry);
+    }
+
+    const insertLanc = db.prepare(`
+        INSERT OR IGNORE INTO lancamentos_indicadores
+            (indicador_id, competencia, valor_realizado, meta, observacao, usuario_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    let lancamentosInseridos = 0;
+    db.exec("BEGIN");
+    try {
+        for (const [competencia, data] of [...mesesMap.entries()].sort()) {
+            const liquido = data.captadas - data.saidas;
+            insertLanc.run(
+                indCrescimento.id,
+                competencia,
+                liquido,
+                indCrescimento.meta_padrao,
+                `Captadas: ${data.captadas} | Saídas: ${data.saidas} (derivado do CSV)`,
+                pHenriqueId,
+            );
+            lancamentosInseridos++;
+        }
+        db.exec("COMMIT");
+    } catch (e) {
+        db.exec("ROLLBACK");
+        throw e;
+    }
+    console.log(`✅ ${lancamentosInseridos} meses de crescimento líquido inseridos`);
 }
 
 // ─── RESUMO ───────────────────────────────────────────────────────────────────
@@ -336,6 +372,7 @@ const ativas = db.prepare("SELECT COUNT(*) as t FROM unidades WHERE status = 'At
 const baixas = db.prepare("SELECT COUNT(*) as t FROM unidades WHERE status = 'Baixa'").get().t;
 const emInteg = db.prepare("SELECT COUNT(*) as t FROM unidades WHERE status = 'Integracao'").get().t;
 const fechamento = db.prepare("SELECT COUNT(*) as t FROM unidades WHERE status = 'Fechamento'").get().t;
+const totalLanc = db.prepare("SELECT COUNT(*) as t FROM lancamentos_indicadores").get().t;
 
 console.log("\n══════════════════════════════════════════════════");
 console.log("  SEED CONCLUÍDO COM SUCESSO!");
@@ -348,6 +385,7 @@ console.log(`    → Ativas:         ${ativas}`);
 console.log(`    → Em Integração:  ${emInteg}`);
 console.log(`    → Fechamento:     ${fechamento}`);
 console.log(`    → Baixa/Inativo:  ${baixas}`);
+console.log(`  Lançamentos (KRI):  ${totalLanc} meses (crescimento líquido)`);
 console.log("══════════════════════════════════════════════════\n");
 console.log("Credenciais de acesso:");
 console.log("  Admin  → admin@likehome.com   / admin123");

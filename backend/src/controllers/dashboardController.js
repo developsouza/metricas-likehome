@@ -91,37 +91,94 @@ function dashboardAdmin(req, res) {
     const { competencia } = req.query;
     const comp = competencia || new Date().toISOString().substring(0, 7);
 
-    // Pipeline resumo
+    // ── Pipeline por status ───────────────────────────────────────────────
     const pipeline = db.prepare(`SELECT status, COUNT(*) as total FROM unidades GROUP BY status`).all();
     const totalUnidades = pipeline.reduce((acc, p) => acc + p.total, 0);
     const unidadesAtivas = pipeline.find((p) => p.status === "Ativo")?.total || 0;
+    const emIntegracao = pipeline.find((p) => p.status === "Integracao")?.total || 0;
+    const emFechamento = pipeline.find((p) => p.status === "Fechamento")?.total || 0;
 
-    // Resumo por departamento (KRIs no mês)
-    const krisPorDepto = db
-        .prepare(
-            `
-    SELECT i.departamento, i.nome, i.unidade_medida, l.valor_realizado, l.meta,
-      CASE WHEN l.meta > 0 THEN ROUND(l.valor_realizado * 100.0 / l.meta, 1) ELSE NULL END as percentual
-    FROM lancamentos_indicadores l
-    JOIN indicadores i ON i.id = l.indicador_id
-    WHERE l.competencia = ? AND i.tipo = 'KRI'
-    ORDER BY i.departamento, i.nome
-  `,
-        )
-        .all(comp);
-
-    // Crescimento líquido — calculado automaticamente a partir do historico_status_unidade
+    // ── Crescimento líquido calculado a partir das datas reais ───────────
     const nomeCL = "Crescimento líquido de unidades";
     const clMes = calcularCrescimentoLiquido(comp);
     const metaCLRow = db.prepare(`SELECT meta_padrao FROM indicadores WHERE nome = ?`).get(nomeCL);
     const metaCL = metaCLRow?.meta_padrao || 5;
     const percentualCL = metaCL > 0 ? Math.round(((clMes.liquido * 100) / metaCL) * 10) / 10 : null;
-    const evolucaoCrescimento = getUltimosMeses(comp, 6).map((m) => {
+
+    // ── Evolução de captações e baixas (últimos 12 meses) ────────────────
+    //    Derivado de data_ativacao e data_baixa da tabela unidades
+    const evolucaoCrescimento = getUltimosMeses(comp, 12).map((m) => {
         const cl = calcularCrescimentoLiquido(m);
-        return { competencia: m, ...cl };
+        return { competencia: m, captadas: cl.captadas, perdidas: cl.perdidas, liquido: cl.liquido };
     });
-    // Sobrescreve a entrada manual do KRI com o valor calculado automaticamente;
-    // se o KRI ainda não tiver lançamento no mês, injeta a entrada
+
+    // ── Top empreendimentos por unidades ativas ───────────────────────────
+    const empreendimentos = db
+        .prepare(
+            `SELECT e.nome,
+              COUNT(u.id) as total_unidades,
+              SUM(CASE WHEN u.status='Ativo'      THEN 1 ELSE 0 END) as ativas,
+              SUM(CASE WHEN u.status='Integracao' THEN 1 ELSE 0 END) as integracao,
+              SUM(CASE WHEN u.status='Fechamento' THEN 1 ELSE 0 END) as fechamento,
+              SUM(CASE WHEN u.status='Baixa'      THEN 1 ELSE 0 END) as baixas
+             FROM empreendimentos e
+             LEFT JOIN unidades u ON u.empreendimento_id = e.id
+             GROUP BY e.id
+             ORDER BY ativas DESC`,
+        )
+        .all();
+
+    // ── Distribuição BPO ─────────────────────────────────────────────────
+    const distBPO = db
+        .prepare(
+            `SELECT COALESCE(bpo,'Não informado') as bpo, COUNT(*) as total
+             FROM unidades WHERE status='Ativo'
+             GROUP BY bpo ORDER BY total DESC`,
+        )
+        .all();
+
+    // ── Distribuição % Administração ─────────────────────────────────────
+    const distComissao = db
+        .prepare(
+            `SELECT COALESCE(CAST(comissao_adm AS TEXT),'Não informado') as comissao,
+                    COUNT(*) as total
+             FROM unidades WHERE status='Ativo'
+             GROUP BY comissao_adm ORDER BY total DESC`,
+        )
+        .all();
+
+    // ── Distribuição por responsável ─────────────────────────────────────
+    const distResponsavel = db
+        .prepare(
+            `SELECT COALESCE(us.nome,'Sem responsável') as responsavel, COUNT(*) as total
+             FROM unidades u
+             LEFT JOIN usuarios us ON us.id = u.responsavel_id
+             WHERE u.status = 'Ativo'
+             GROUP BY u.responsavel_id ORDER BY total DESC`,
+        )
+        .all();
+
+    // ── Unidades com indicação ────────────────────────────────────────────
+    const distIndicacao = db
+        .prepare(
+            `SELECT COALESCE(status_pagamento_indicacao,'Sem indicação') as status_pgto, COUNT(*) as total
+             FROM unidades WHERE nome_indicacao IS NOT NULL AND nome_indicacao != ''
+             GROUP BY status_pagamento_indicacao`,
+        )
+        .all();
+
+    // ── KRIs + alertas (apenas se houver lançamentos manuais) ────────────
+    const krisPorDepto = db
+        .prepare(
+            `SELECT i.departamento, i.nome, i.unidade_medida, l.valor_realizado, l.meta,
+              CASE WHEN l.meta > 0 THEN ROUND(l.valor_realizado*100.0/l.meta,1) ELSE NULL END as percentual
+             FROM lancamentos_indicadores l
+             JOIN indicadores i ON i.id = l.indicador_id
+             WHERE l.competencia = ? AND i.tipo = 'KRI'
+             ORDER BY i.departamento, i.nome`,
+        )
+        .all(comp);
+
     const clEntrada = {
         departamento: "Comercial",
         nome: nomeCL,
@@ -134,111 +191,27 @@ function dashboardAdmin(req, res) {
         ? krisPorDepto.map((k) => (k.nome === nomeCL ? { ...k, ...clEntrada } : k))
         : [...krisPorDepto, clEntrada];
 
-    // Alertas: KRIs abaixo de 80% da meta
     const alertas = krisPorDeptoFinal.filter((k) => k.percentual !== null && k.percentual < 80);
-
-    // Evolução receita média (Financeiro KRI últimos 6 meses)
-    const evolucaoReceita = db
-        .prepare(
-            `
-    SELECT l.competencia, l.valor_realizado, l.meta FROM lancamentos_indicadores l
-    JOIN indicadores i ON i.id = l.indicador_id
-    WHERE i.departamento = 'Financeiro' AND i.tipo = 'KRI' AND i.nome LIKE '%EBITDA%'
-    ORDER BY l.competencia DESC LIMIT 6
-  `,
-        )
-        .all()
-        .reverse();
-
-    // Evolução ocupação últimos 6 meses
-    const evolucaoOcupacao = db
-        .prepare(
-            `
-    SELECT l.competencia, l.valor_realizado FROM lancamentos_indicadores l
-    JOIN indicadores i ON i.id = l.indicador_id
-    WHERE i.departamento = 'Precificacao' AND i.nome LIKE '%ocupa%'
-    ORDER BY l.competencia DESC LIMIT 6
-  `,
-        )
-        .all()
-        .reverse();
-
-    // Evolução leads últimos 6 meses
-    const evolucaoLeads = db
-        .prepare(
-            `
-    SELECT l.competencia, l.valor_realizado FROM lancamentos_indicadores l
-    JOIN indicadores i ON i.id = l.indicador_id
-    WHERE i.departamento = 'Marketing' AND i.nome LIKE '%proprietário%'
-    ORDER BY l.competencia DESC LIMIT 6
-  `,
-        )
-        .all()
-        .reverse();
-
-    // Resumo financeiro do mês
-    const financeiroMes = db
-        .prepare(
-            `
-    SELECT i.nome, l.valor_realizado, l.meta FROM lancamentos_indicadores l
-    JOIN indicadores i ON i.id = l.indicador_id
-    WHERE i.departamento = 'Financeiro' AND l.competencia = ?
-  `,
-        )
-        .all(comp);
-
-    // Nota OTA
-    const notaOTA = db
-        .prepare(
-            `
-    SELECT l.valor_realizado FROM lancamentos_indicadores l
-    JOIN indicadores i ON i.id = l.indicador_id
-    WHERE i.departamento = 'Atendimento' AND i.nome LIKE '%OTA%' AND l.competencia = ?
-  `,
-        )
-        .get(comp);
-
-    // Taxa de ocupação
-    const taxaOcupacao = db
-        .prepare(
-            `
-    SELECT l.valor_realizado FROM lancamentos_indicadores l
-    JOIN indicadores i ON i.id = l.indicador_id
-    WHERE i.nome LIKE '%ocupa%' AND i.departamento = 'Precificacao' AND l.competencia = ?
-  `,
-        )
-        .get(comp);
-
-    // Empreendimentos com unidades ativas
-    const empreendimentos = db
-        .prepare(
-            `
-    SELECT e.nome, COUNT(u.id) as total_ativas
-    FROM empreendimentos e
-    LEFT JOIN unidades u ON u.empreendimento_id = e.id AND u.status = 'Ativo'
-    GROUP BY e.id ORDER BY total_ativas DESC
-  `,
-        )
-        .all();
 
     res.json({
         competencia: comp,
         resumo: {
             totalUnidades,
             unidadesAtivas,
-            notaOTA: notaOTA?.valor_realizado || null,
-            taxaOcupacao: taxaOcupacao?.valor_realizado || null,
+            emIntegracao,
+            emFechamento,
+            baixas: pipeline.find((p) => p.status === "Baixa")?.total || 0,
         },
         pipeline,
         krisPorDepto: krisPorDeptoFinal,
         alertas,
-        evolucaoReceita,
-        evolucaoOcupacao,
-        evolucaoLeads,
-        financeiroMes,
-        empreendimentos,
-        crescimentoLiquido: { ...clMes, meta: metaCL, percentual: percentualCL },
         evolucaoCrescimento,
+        empreendimentos,
+        distBPO,
+        distComissao,
+        distResponsavel,
+        distIndicacao,
+        crescimentoLiquido: { ...clMes, meta: metaCL, percentual: percentualCL },
     });
 }
 
@@ -366,6 +339,8 @@ function bi(req, res) {
     SELECT e.nome, e.cidade,
       COUNT(u.id) as total_unidades,
       SUM(CASE WHEN u.status = 'Ativo' THEN 1 ELSE 0 END) as ativas,
+      SUM(CASE WHEN u.status = 'Integracao' THEN 1 ELSE 0 END) as integracao,
+      SUM(CASE WHEN u.status = 'Fechamento' THEN 1 ELSE 0 END) as fechamento,
       SUM(CASE WHEN u.status = 'Baixa' THEN 1 ELSE 0 END) as baixas
     FROM empreendimentos e
     LEFT JOIN unidades u ON u.empreendimento_id = e.id
@@ -374,7 +349,63 @@ function bi(req, res) {
         )
         .all();
 
-    res.json({ periodo: { inicio, fim }, lancamentos, evolucaoPipeline, rankEmpreendimentos });
+    // ── Dados reais do portfólio para o BI ──────────────────────────────
+    // Evolução de captações e baixas (12 meses até o fim do período)
+    const evolucaoCrescimento = getUltimosMeses(fim, 12).map((m) => {
+        const cl = calcularCrescimentoLiquido(m);
+        return { competencia: m, captadas: cl.captadas, perdidas: cl.perdidas, liquido: cl.liquido };
+    });
+
+    // Totais por status
+    const totaisStatus = db.prepare(`SELECT status, COUNT(*) as total FROM unidades GROUP BY status`).all();
+    const totalUnidades = totaisStatus.reduce((a, t) => a + t.total, 0);
+    const totalAtivas = totaisStatus.find((t) => t.status === "Ativo")?.total || 0;
+    const totalIntegracao = totaisStatus.find((t) => t.status === "Integracao")?.total || 0;
+    const totalFechamento = totaisStatus.find((t) => t.status === "Fechamento")?.total || 0;
+    const totalBaixas = totaisStatus.find((t) => t.status === "Baixa")?.total || 0;
+
+    // Distribuição BPO
+    const distBPO = db
+        .prepare(
+            `SELECT COALESCE(bpo, 'Não informado') as bpo, COUNT(*) as total
+             FROM unidades WHERE status IN ('Ativo','Integracao','Fechamento')
+               AND bpo IS NOT NULL AND bpo != ''
+             GROUP BY bpo ORDER BY total DESC`,
+        )
+        .all();
+
+    // Distribuição % Administração
+    const distComissao = db
+        .prepare(
+            `SELECT CAST(CAST(comissao_adm AS INTEGER) AS TEXT) as comissao, COUNT(*) as total
+             FROM unidades WHERE status IN ('Ativo','Integracao','Fechamento')
+               AND comissao_adm IS NOT NULL
+             GROUP BY CAST(comissao_adm AS INTEGER) ORDER BY total DESC`,
+        )
+        .all();
+
+    // Por responsável (unidades ativas)
+    const distResponsavel = db
+        .prepare(
+            `SELECT u.nome as responsavel, COUNT(*) as total
+             FROM unidades un
+             JOIN usuarios u ON u.id = un.responsavel_id
+             WHERE un.status = 'Ativo'
+             GROUP BY un.responsavel_id ORDER BY total DESC`,
+        )
+        .all();
+
+    res.json({
+        periodo: { inicio, fim },
+        lancamentos,
+        evolucaoPipeline,
+        rankEmpreendimentos,
+        evolucaoCrescimento,
+        totais: { total: totalUnidades, ativas: totalAtivas, integracao: totalIntegracao, fechamento: totalFechamento, baixas: totalBaixas },
+        distBPO,
+        distComissao,
+        distResponsavel,
+    });
 }
 
 module.exports = { dashboardAdmin, dashboardDepartamento, bi };
