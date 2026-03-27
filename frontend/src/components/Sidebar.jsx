@@ -88,6 +88,11 @@ const IconOwner = () => (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
     </svg>
 );
+const IconUpload = () => (
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+    </svg>
+);
 
 export default function Sidebar({ isOpen, onClose }) {
     const { usuario, logout } = useAuth();
@@ -146,6 +151,9 @@ export default function Sidebar({ isOpen, onClose }) {
                         <div className="nav-section">Administração</div>
                         <button className={`nav-item ${isActive("/usuarios") ? "active" : ""}`} onClick={() => go("/usuarios")}>
                             <IconUsers /> Usuários
+                        </button>
+                        <button className={`nav-item ${isActive("/importacao") ? "active" : ""}`} onClick={() => go("/importacao")}>
+                            <IconUpload /> Importar CSV
                         </button>
                     </>
                 ) : (

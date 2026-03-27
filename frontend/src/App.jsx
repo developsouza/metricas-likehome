@@ -125,6 +125,16 @@ function AppRoutes() {
                     </PrivateRoute>
                 }
             />
+            <Route
+                path="/importacao"
+                element={
+                    <PrivateRoute adminOnly>
+                        <Layout>
+                            <Importacao />
+                        </Layout>
+                    </PrivateRoute>
+                }
+            />
             <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
     );

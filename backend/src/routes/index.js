@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const { authMiddleware, adminMiddleware } = require('../middlewares/auth');
 const auth = require('../controllers/authController');
 const usuarios = require('../controllers/usuariosController');
@@ -9,6 +10,19 @@ const unidades = require('../controllers/unidadesController');
 const indicadores = require('../controllers/indicadoresController');
 const lancamentos = require('../controllers/lancamentosController');
 const dashboard = require('../controllers/dashboardController');
+const importCtrl = require('../controllers/importController');
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+    fileFilter: (_req, file, cb) => {
+        if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Apenas arquivos CSV são permitidos'));
+        }
+    },
+});
 
 // Auth
 router.post('/auth/login', auth.login);
@@ -58,5 +72,10 @@ router.get('/lancamentos/historico', authMiddleware, lancamentos.historico);
 router.post('/lancamentos', authMiddleware, lancamentos.criar);
 router.put('/lancamentos/:id', authMiddleware, lancamentos.atualizar);
 router.delete('/lancamentos/:id', authMiddleware, lancamentos.remover);
+
+// Importação CSV
+router.post('/import/validar', authMiddleware, adminMiddleware, upload.single('arquivo'), importCtrl.validar);
+router.post('/import/importar', authMiddleware, adminMiddleware, upload.single('arquivo'), importCtrl.importar);
+router.get('/import/modelo-lancamentos', authMiddleware, adminMiddleware, importCtrl.modeloLancamentos);
 
 module.exports = router;
