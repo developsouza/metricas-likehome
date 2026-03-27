@@ -5,9 +5,17 @@ const { db } = require("../database");
 const SCHEMA_PORTFOLIO = {
     required: ["Empreendimento", "Unidade", "Status da unidade"],
     optional: [
-        "Proprietario", "Data de Contrato", "Data de Ativação", "Data de Saida",
-        "Comissao - Adm", "BPO", "Taxa - Enxoval",
-        "Nome da Indicação", "Status - Pagamento Indicação", "Responsável", "Observação",
+        "Proprietario",
+        "Data de Contrato",
+        "Data de Ativação",
+        "Data de Saida",
+        "Comissao - Adm",
+        "BPO",
+        "Taxa - Enxoval",
+        "Nome da Indicação",
+        "Status - Pagamento Indicação",
+        "Responsável",
+        "Observação",
     ],
     description: "Portfólio comercial (empreendimentos, proprietários e unidades)",
 };
@@ -35,9 +43,7 @@ function parseCSV(buffer) {
     const sep = firstLine.includes(";") ? ";" : ",";
 
     const headers = firstLine.split(sep).map((h) => h.trim().replace(/^["']|["']$/g, ""));
-    const rows = lines.slice(1).map((line) =>
-        line.split(sep).map((v) => v.trim().replace(/^["']|["']$/g, ""))
-    );
+    const rows = lines.slice(1).map((line) => line.split(sep).map((v) => v.trim().replace(/^["']|["']$/g, "")));
 
     return { headers, rows, sep };
 }
@@ -69,7 +75,12 @@ function parseComissao(s) {
 
 // Normaliza cabeçalho CSV para match flexível (remove espaços extras, acento, case)
 function normHeader(s) {
-    return (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+    return (s || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
 }
 
 function findCol(headers, candidates) {
@@ -92,15 +103,9 @@ function validar(req, res) {
 
     const schema = tipo === "lancamentos" ? SCHEMA_LANCAMENTOS : SCHEMA_PORTFOLIO;
 
-    const faltando = schema.required.filter(
-        (col) => findCol(headers, [col]) < 0
-    );
-    const encontradas = schema.required.filter(
-        (col) => findCol(headers, [col]) >= 0
-    );
-    const opcionaisEncontradas = (schema.optional || []).filter(
-        (col) => findCol(headers, [col]) >= 0
-    );
+    const faltando = schema.required.filter((col) => findCol(headers, [col]) < 0);
+    const encontradas = schema.required.filter((col) => findCol(headers, [col]) >= 0);
+    const opcionaisEncontradas = (schema.optional || []).filter((col) => findCol(headers, [col]) >= 0);
 
     return res.json({
         valido: faltando.length === 0,
@@ -141,22 +146,27 @@ function importarPortfolio(file, usuarioId) {
 
     // Carregar dados existentes em memória para evitar duplicatas
     const respMap = {};
-    db.prepare("SELECT id, nome FROM usuarios").all().forEach((u) => {
-        respMap[u.nome.trim()] = u.id;
-        respMap[u.nome.split(" ")[0].trim()] = u.id;
-    });
+    db.prepare("SELECT id, nome FROM usuarios")
+        .all()
+        .forEach((u) => {
+            respMap[u.nome.trim()] = u.id;
+            respMap[u.nome.split(" ")[0].trim()] = u.id;
+        });
 
     const empMap = new Map();
-    db.prepare("SELECT id, nome FROM empreendimentos").all()
+    db.prepare("SELECT id, nome FROM empreendimentos")
+        .all()
         .forEach((e) => empMap.set(e.nome.trim(), e.id));
 
     const propMap = new Map();
-    db.prepare("SELECT id, nome FROM proprietarios").all()
+    db.prepare("SELECT id, nome FROM proprietarios")
+        .all()
         .forEach((p) => propMap.set(p.nome.trim(), p.id));
 
     // Mapa de unidades existentes: "empId|numero" → id
     const unidMap = new Set();
-    db.prepare("SELECT empreendimento_id, numero FROM unidades").all()
+    db.prepare("SELECT empreendimento_id, numero FROM unidades")
+        .all()
         .forEach((u) => unidMap.add(`${u.empreendimento_id}|${u.numero}`));
 
     // Statements preparados fora do loop
@@ -221,13 +231,16 @@ function importarPortfolio(file, usuarioId) {
 
             // Responsável
             const respNome = col.resp >= 0 ? (r[col.resp] || "").trim() : "";
-            const respId = respNome ? (respMap[respNome] || null) : null;
+            const respId = respNome ? respMap[respNome] || null : null;
 
             // Inserir unidade
-            const statusStr = col.status >= 0 ? (r[col.status] || "Ativo") : "Ativo";
+            const statusStr = col.status >= 0 ? r[col.status] || "Ativo" : "Ativo";
             const res = stmtInsertUnid.run(
-                empId, unidNum, mapStatus(statusStr),
-                propId, respId,
+                empId,
+                unidNum,
+                mapStatus(statusStr),
+                propId,
+                respId,
                 col.obs >= 0 ? r[col.obs] || null : null,
                 col.dataContrato >= 0 ? parseDate(r[col.dataContrato]) : null,
                 col.dataAtiv >= 0 ? parseDate(r[col.dataAtiv]) : null,
@@ -310,9 +323,7 @@ function importarLancamentos(file, usuarioId) {
                 continue;
             }
 
-            const ind = db.prepare(
-                "SELECT id FROM indicadores WHERE departamento = ? AND nome = ? AND ativo = 1"
-            ).get(departamento, nomeIndicador);
+            const ind = db.prepare("SELECT id FROM indicadores WHERE departamento = ? AND nome = ? AND ativo = 1").get(departamento, nomeIndicador);
 
             if (!ind) {
                 result.erros.push(`Linha ${i + 2}: indicador '${nomeIndicador}' não encontrado no departamento '${departamento}'`);
@@ -322,9 +333,7 @@ function importarLancamentos(file, usuarioId) {
             const meta = col.meta >= 0 ? parseFloat(r[col.meta]) || null : null;
             const obs = col.obs >= 0 ? r[col.obs] || null : null;
 
-            const existing = db.prepare(
-                "SELECT id FROM lancamentos_indicadores WHERE indicador_id = ? AND competencia = ?"
-            ).get(ind.id, competencia);
+            const existing = db.prepare("SELECT id FROM lancamentos_indicadores WHERE indicador_id = ? AND competencia = ?").get(ind.id, competencia);
 
             insertLanc.run(ind.id, competencia, valor, meta, obs, usuarioId);
             existing ? result.atualizados++ : result.inseridos++;
@@ -381,9 +390,9 @@ function importar(req, res) {
 // ─── LISTAR INDICADORES (para gerar modelo CSV de lançamentos) ────────────────
 
 function modeloLancamentos(req, res) {
-    const inds = db.prepare(
-        "SELECT departamento, nome, unidade_medida, meta_padrao FROM indicadores WHERE ativo = 1 ORDER BY departamento, nome"
-    ).all();
+    const inds = db
+        .prepare("SELECT departamento, nome, unidade_medida, meta_padrao FROM indicadores WHERE ativo = 1 ORDER BY departamento, nome")
+        .all();
 
     const competencia = new Date().toISOString().substring(0, 7);
     const linhas = [
