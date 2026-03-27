@@ -11,12 +11,16 @@ console.log("🗑  Limpando dados anteriores...");
 // pois são gerenciados pelo sistema (CRUD manual)
 db.exec("PRAGMA foreign_keys = OFF");
 db.exec("DELETE FROM usuarios");
-try { db.exec("DELETE FROM indicadores"); } catch (_) {}
+try {
+    db.exec("DELETE FROM indicadores");
+} catch (_) {}
 db.exec("PRAGMA foreign_keys = ON");
 
 const seqNames = ["usuarios", "indicadores"];
 for (const name of seqNames) {
-    try { db.exec(`DELETE FROM sqlite_sequence WHERE name = '${name}'`); } catch (_) {}
+    try {
+        db.exec(`DELETE FROM sqlite_sequence WHERE name = '${name}'`);
+    } catch (_) {}
 }
 
 // ─── USUÁRIOS ─────────────────────────────────────────────────────────────────
@@ -67,8 +71,6 @@ db.prepare(`INSERT INTO usuarios (nome, email, senha_hash, perfil, departamento)
     "usuario",
     "Precificacao",
 );
-
-
 
 // ─── INDICADORES ─────────────────────────────────────────────────────────────
 console.log("📊 Inserindo indicadores...");

@@ -182,17 +182,29 @@ db.exec("BEGIN");
 try {
     for (const row of rows) {
         const empId = empMap.get(row.empreendimento);
-        if (!empId) { unidadesIgnoradas++; continue; }
+        if (!empId) {
+            unidadesIgnoradas++;
+            continue;
+        }
 
         const propId = row.proprietario ? propMap.get(row.proprietario) || null : null;
         const respId = row.responsavel_nome ? respMap[row.responsavel_nome] || null : null;
 
         const result = insertUnidadeStmt.run(
-            empId, row.numero, row.status,
-            propId, respId, row.observacoes || null,
-            row.data_fechamento || null, row.data_ativacao || null, row.data_baixa || null,
-            row.comissao_adm, row.bpo || null, row.taxa_enxoval || null,
-            row.nome_indicacao || null, row.status_pagamento_indicacao || null,
+            empId,
+            row.numero,
+            row.status,
+            propId,
+            respId,
+            row.observacoes || null,
+            row.data_fechamento || null,
+            row.data_ativacao || null,
+            row.data_baixa || null,
+            row.comissao_adm,
+            row.bpo || null,
+            row.taxa_enxoval || null,
+            row.nome_indicacao || null,
+            row.status_pagamento_indicacao || null,
         );
 
         if (result.lastInsertRowid) {
