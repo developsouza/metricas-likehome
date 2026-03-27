@@ -38,20 +38,42 @@ echo "[4/5] Verificando estrutura de dados..."
 mkdir -p "$APP_DIR/backend/data"
 mkdir -p "$LOG_DIR"
 
-# Executa seed se: banco não existir OU FORCE_RESEED=true
-# Uso: FORCE_RESEED=true APP_DIR=/opt/metricas-likehome bash deploy.sh
+# ── Detecção automática de mudança no seed ─────────────────────────────────
+# Calcula hash combinado de seed.js + CSV. Se mudaram desde o último deploy,
+# o banco é recriado automaticamente com os dados mais recentes.
+SEED_FILE="$APP_DIR/backend/src/seed.js"
+CSV_FILE="$APP_DIR/Relatorio Comercial - LikeHome v3(BaseDados).csv"
+SEED_HASH_FILE="$APP_DIR/backend/data/.seed_hash"
+
+CURRENT_HASH=$(sha256sum "$SEED_FILE" "$CSV_FILE" 2>/dev/null | sha256sum | awk '{print $1}')
+STORED_HASH=""
+[ -f "$SEED_HASH_FILE" ] && STORED_HASH=$(cat "$SEED_HASH_FILE")
+
 FORCE_RESEED="${FORCE_RESEED:-false}"
-if [ ! -f "$APP_DIR/backend/data/database.sqlite" ] || [ "$FORCE_RESEED" = "true" ]; then
-  if [ "$FORCE_RESEED" = "true" ]; then
-    echo "    → FORCE_RESEED ativado — removendo banco anterior e reseedando com dados reais..."
-    rm -f "$APP_DIR/backend/data/database.sqlite"
-    rm -f "$APP_DIR/backend/data/database.sqlite-shm"
-    rm -f "$APP_DIR/backend/data/database.sqlite-wal"
-  else
-    echo "    → Banco não encontrado, executando seed inicial..."
-  fi
+
+if [ ! -f "$APP_DIR/backend/data/database.sqlite" ]; then
+  SEED_REASON="Banco não encontrado — executando seed inicial..."
+  SHOULD_SEED=true
+elif [ "$FORCE_RESEED" = "true" ]; then
+  SEED_REASON="FORCE_RESEED ativado — recriando banco com dados atuais..."
+  SHOULD_SEED=true
+elif [ "$CURRENT_HASH" != "$STORED_HASH" ]; then
+  SEED_REASON="seed.js ou CSV foram alterados — recriando banco automaticamente..."
+  SHOULD_SEED=true
+else
+  SHOULD_SEED=false
+fi
+
+if [ "$SHOULD_SEED" = "true" ]; then
+  echo "    → $SEED_REASON"
+  rm -f "$APP_DIR/backend/data/database.sqlite"
+  rm -f "$APP_DIR/backend/data/database.sqlite-shm"
+  rm -f "$APP_DIR/backend/data/database.sqlite-wal"
   cd "$APP_DIR/backend"
   NODE_ENV=production DB_PATH="$APP_DIR/backend/data/database.sqlite" "$NODE" --disable-warning=ExperimentalWarning src/seed.js
+  echo "$CURRENT_HASH" > "$SEED_HASH_FILE"
+else
+  echo "    → Banco atualizado, seed não necessário."
 fi
 
 # 5. Reinicia / inicia a API com PM2
