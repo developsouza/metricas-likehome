@@ -75,6 +75,11 @@ function criar(req, res) {
         data_integracao,
         data_ativacao,
         data_baixa,
+        comissao_adm,
+        bpo,
+        taxa_enxoval,
+        nome_indicacao,
+        status_pagamento_indicacao,
     } = req.body;
 
     if (!empreendimento_id || !numero) return res.status(400).json({ error: "Empreendimento e número são obrigatórios" });
@@ -83,8 +88,9 @@ function criar(req, res) {
         .prepare(
             `
     INSERT INTO unidades (empreendimento_id, numero, tipo, status, proprietario_id, responsavel_id, observacoes,
-      data_prospeccao, data_reuniao, data_fechamento, data_integracao, data_ativacao, data_baixa, atualizado_em)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      data_prospeccao, data_reuniao, data_fechamento, data_integracao, data_ativacao, data_baixa,
+      comissao_adm, bpo, taxa_enxoval, nome_indicacao, status_pagamento_indicacao, atualizado_em)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `,
         )
         .run(
@@ -101,6 +107,11 @@ function criar(req, res) {
             data_integracao || null,
             data_ativacao || null,
             data_baixa || null,
+            comissao_adm != null ? Number(comissao_adm) : null,
+            bpo || null,
+            taxa_enxoval || null,
+            nome_indicacao || null,
+            status_pagamento_indicacao || null,
         );
 
     // Registra histórico
@@ -131,6 +142,11 @@ function atualizar(req, res) {
         data_integracao,
         data_ativacao,
         data_baixa,
+        comissao_adm,
+        bpo,
+        taxa_enxoval,
+        nome_indicacao,
+        status_pagamento_indicacao,
     } = req.body;
 
     const novoStatus = status || unidade.status;
@@ -138,11 +154,13 @@ function atualizar(req, res) {
 
     // Converte string vazia para null nos campos opcionais de FK e datas
     const toNull = (v, fallback) => (v !== undefined ? (v === "" ? null : v) : fallback);
+    const toNullNum = (v, fallback) => (v !== undefined ? (v === "" || v === null ? null : Number(v)) : fallback);
 
     db.prepare(
         `
     UPDATE unidades SET empreendimento_id=?, numero=?, tipo=?, status=?, proprietario_id=?, responsavel_id=?, observacoes=?,
       data_prospeccao=?, data_reuniao=?, data_fechamento=?, data_integracao=?, data_ativacao=?, data_baixa=?,
+      comissao_adm=?, bpo=?, taxa_enxoval=?, nome_indicacao=?, status_pagamento_indicacao=?,
       atualizado_em=CURRENT_TIMESTAMP
     WHERE id=?
   `,
@@ -160,6 +178,11 @@ function atualizar(req, res) {
         toNull(data_integracao, unidade.data_integracao),
         toNull(data_ativacao, unidade.data_ativacao),
         toNull(data_baixa, unidade.data_baixa),
+        toNullNum(comissao_adm, unidade.comissao_adm),
+        toNull(bpo, unidade.bpo),
+        toNull(taxa_enxoval, unidade.taxa_enxoval),
+        toNull(nome_indicacao, unidade.nome_indicacao),
+        toNull(status_pagamento_indicacao, unidade.status_pagamento_indicacao),
         req.params.id,
     );
 

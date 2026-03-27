@@ -17,6 +17,9 @@ function classeStatus(s) {
     return m[s] || "";
 }
 
+const BPO_OPTIONS = ["Proprietario", "LikeHome"];
+const PAGAMENTO_OPTIONS = ["Paga", "Não Paga"];
+
 function Modal({ unidade, onClose, onSave, empreendimentos, proprietarios, usuarios }) {
     const [form, setForm] = useState(
         unidade
@@ -35,6 +38,11 @@ function Modal({ unidade, onClose, onSave, empreendimentos, proprietarios, usuar
                   data_integracao: "",
                   data_ativacao: "",
                   data_baixa: "",
+                  comissao_adm: "",
+                  bpo: "",
+                  taxa_enxoval: "",
+                  nome_indicacao: "",
+                  status_pagamento_indicacao: "",
               },
     );
     const [loading, setLoading] = useState(false);
@@ -124,6 +132,59 @@ function Modal({ unidade, onClose, onSave, empreendimentos, proprietarios, usuar
                                 <option key={u.id} value={u.id}>
                                     {u.nome}
                                 </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">% Administração</label>
+                        <input
+                            type="number"
+                            className="form-control"
+                            value={form.comissao_adm ?? ""}
+                            onChange={(e) => h("comissao_adm", e.target.value)}
+                            placeholder="Ex: 20"
+                            min="0"
+                            max="100"
+                            step="0.5"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">BPO</label>
+                        <select className="form-control" value={form.bpo || ""} onChange={(e) => h("bpo", e.target.value)}>
+                            <option value="">Selecione...</option>
+                            {BPO_OPTIONS.map((b) => (
+                                <option key={b}>{b}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Taxa Enxoval</label>
+                        <select className="form-control" value={form.taxa_enxoval || ""} onChange={(e) => h("taxa_enxoval", e.target.value)}>
+                            <option value="">Selecione...</option>
+                            {PAGAMENTO_OPTIONS.map((p) => (
+                                <option key={p}>{p}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Nome Indicação</label>
+                        <input
+                            className="form-control"
+                            value={form.nome_indicacao || ""}
+                            onChange={(e) => h("nome_indicacao", e.target.value)}
+                            placeholder="Quem indicou?"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Pgto. Indicação</label>
+                        <select
+                            className="form-control"
+                            value={form.status_pagamento_indicacao || ""}
+                            onChange={(e) => h("status_pagamento_indicacao", e.target.value)}
+                        >
+                            <option value="">Selecione...</option>
+                            {PAGAMENTO_OPTIONS.map((p) => (
+                                <option key={p}>{p}</option>
                             ))}
                         </select>
                     </div>
@@ -317,18 +378,20 @@ export default function Unidades() {
                                     <tr>
                                         <th>Empreendimento</th>
                                         <th>Nº</th>
-                                        <th>Tipo</th>
                                         <th>Status</th>
                                         <th>Proprietário</th>
+                                        <th>% Adm</th>
+                                        <th>BPO</th>
+                                        <th>Contrato</th>
+                                        <th>Ativação</th>
                                         <th>Responsável</th>
-                                        <th>Últ. Atualização</th>
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {listaBuscada.length === 0 ? (
                                         <tr>
-                                            <td colSpan={8} style={{ textAlign: "center", color: "var(--neutral-400)", padding: "2rem" }}>
+                                            <td colSpan={10} style={{ textAlign: "center", color: "var(--neutral-400)", padding: "2rem" }}>
                                                 Nenhuma unidade encontrada
                                             </td>
                                         </tr>
@@ -337,13 +400,17 @@ export default function Unidades() {
                                             <tr key={u.id}>
                                                 <td style={{ fontWeight: 600 }}>{u.empreendimento_nome}</td>
                                                 <td>{u.numero}</td>
-                                                <td className="text-muted">{u.tipo || "—"}</td>
                                                 <td>
                                                     <span className={`status-badge ${classeStatus(u.status)}`}>{labelStatus(u.status)}</span>
                                                 </td>
                                                 <td className="text-muted">{u.proprietario_nome || "—"}</td>
+                                                <td className="text-muted" style={{ whiteSpace: "nowrap" }}>
+                                                    {u.comissao_adm != null ? `${u.comissao_adm}%` : "—"}
+                                                </td>
+                                                <td className="text-muted">{u.bpo || "—"}</td>
+                                                <td className="text-muted">{fmtData(u.data_fechamento) || "—"}</td>
+                                                <td className="text-muted">{fmtData(u.data_ativacao) || "—"}</td>
                                                 <td className="text-muted">{u.responsavel_nome || "—"}</td>
-                                                <td className="text-muted">{fmtData(u.atualizado_em || u.criado_em)}</td>
                                                 <td>
                                                     <div className="flex-gap">
                                                         <button

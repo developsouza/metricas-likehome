@@ -1,167 +1,355 @@
-require('dotenv').config();
-const bcrypt = require('bcryptjs');
-const { db, initDatabase } = require('./database');
+require("dotenv").config();
+const bcrypt = require("bcryptjs");
+const fs = require("fs");
+const path = require("path");
+const { db, initDatabase } = require("./database");
 
 initDatabase();
 
-// Seed Usuários
-const senha = bcrypt.hashSync('admin123', 10);
-const senhaUser = bcrypt.hashSync('user123', 10);
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
 
-const insertUser = db.prepare(`
-  INSERT OR IGNORE INTO usuarios (nome, email, senha_hash, perfil, departamento)
-  VALUES (?, ?, ?, ?, ?)
+/** Converte DD/MM/YYYY → YYYY-MM-DD. Retorna null para valores inválidos. */
+function parseDate(s) {
+    if (!s || !s.trim() || s.trim() === "-") return null;
+    const parts = s.trim().split("/");
+    if (parts.length !== 3) return null;
+    const [d, m, y] = parts;
+    const year = parseInt(y, 10);
+    if (!y || y.length < 4 || year > 2100 || year < 1900) return null;
+    return `${y.substring(0, 4)}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+/** Mapeia status CSV → status interno */
+function mapStatus(s) {
+    const t = (s || "").trim();
+    if (t === "Ativo") return "Ativo";
+    if (t === "Inativo") return "Baixa";
+    if (t === "Em Integração") return "Integracao";
+    if (t.toLowerCase().startsWith("pendente")) return "Fechamento";
+    return "Ativo";
+}
+
+/** Converte "20%" → 20, "15%" → 15, "" → null */
+function parseComissao(s) {
+    if (!s || !s.trim()) return null;
+    const v = parseFloat(s.replace("%", "").trim());
+    return isNaN(v) ? null : v;
+}
+
+// ─── LIMPAR DADOS ANTERIORES ──────────────────────────────────────────────────
+console.log("🗑  Limpando dados anteriores...");
+
+db.exec("DELETE FROM lancamentos_indicadores");
+db.exec("DELETE FROM historico_status_unidade");
+db.exec("DELETE FROM unidades");
+db.exec("DELETE FROM proprietarios");
+db.exec("DELETE FROM empreendimentos");
+db.exec("DELETE FROM usuarios");
+try {
+    db.exec("DELETE FROM indicadores");
+} catch (_) {}
+
+// Reset sequences
+const seqNames = ["unidades", "proprietarios", "empreendimentos", "usuarios", "lancamentos_indicadores", "historico_status_unidade", "indicadores"];
+for (const name of seqNames) {
+    try {
+        db.exec(`DELETE FROM sqlite_sequence WHERE name = '${name}'`);
+    } catch (_) {}
+}
+
+// ─── USUÁRIOS ─────────────────────────────────────────────────────────────────
+console.log("👤 Inserindo usuários...");
+
+const hashAdmin = bcrypt.hashSync("admin123", 10);
+const hashUser = bcrypt.hashSync("user123", 10);
+
+// Pedro Henrique = gestor (admin)
+const pHenriqueId = db
+    .prepare(`INSERT INTO usuarios (nome, email, senha_hash, perfil, departamento) VALUES (?, ?, ?, ?, ?)`)
+    .run("Pedro Henrique", "admin@likehome.com", hashAdmin, "admin", "Comercial").lastInsertRowid;
+
+const steffanyId = db
+    .prepare(`INSERT INTO usuarios (nome, email, senha_hash, perfil, departamento) VALUES (?, ?, ?, ?, ?)`)
+    .run("Steffany Galdino", "steffany@likehome.com", hashUser, "usuario", "Comercial").lastInsertRowid;
+
+const jessicaId = db
+    .prepare(`INSERT INTO usuarios (nome, email, senha_hash, perfil, departamento) VALUES (?, ?, ?, ?, ?)`)
+    .run("Jessica Batista", "jessica@likehome.com", hashUser, "usuario", "Comercial").lastInsertRowid;
+
+// Demais usuários departamentais
+db.prepare(`INSERT INTO usuarios (nome, email, senha_hash, perfil, departamento) VALUES (?, ?, ?, ?, ?)`).run(
+    "Ana Marketing",
+    "ana@likehome.com",
+    hashUser,
+    "usuario",
+    "Marketing",
+);
+db.prepare(`INSERT INTO usuarios (nome, email, senha_hash, perfil, departamento) VALUES (?, ?, ?, ?, ?)`).run(
+    "Fernanda Financeiro",
+    "fernanda@likehome.com",
+    hashUser,
+    "usuario",
+    "Financeiro",
+);
+db.prepare(`INSERT INTO usuarios (nome, email, senha_hash, perfil, departamento) VALUES (?, ?, ?, ?, ?)`).run(
+    "Beatriz Atendimento",
+    "beatriz@likehome.com",
+    hashUser,
+    "usuario",
+    "Atendimento",
+);
+db.prepare(`INSERT INTO usuarios (nome, email, senha_hash, perfil, departamento) VALUES (?, ?, ?, ?, ?)`).run(
+    "Carlos Precificacao",
+    "carlos@likehome.com",
+    hashUser,
+    "usuario",
+    "Precificacao",
+);
+
+// Mapa responsável CSV → id
+const respMap = {
+    "Steffany Galdino": steffanyId,
+    "Jessica Batista": jessicaId,
+    Jessica: jessicaId,
+    Steffany: steffanyId,
+    "Pedro Henrique": pHenriqueId,
+};
+
+// ─── LER E PARSEAR CSV ────────────────────────────────────────────────────────
+console.log("📄 Lendo CSV da base de dados...");
+
+const csvPath = path.resolve(__dirname, "../../Relatorio Comercial - LikeHome v3(BaseDados).csv");
+const csvText = fs.readFileSync(csvPath, "utf-8");
+const csvLines = csvText.split(/\r?\n/);
+
+// Pula as 5 primeiras linhas (3 metadados + 1 blank + 1 cabeçalho = linha índice 0 a 4)
+const dataLines = csvLines.slice(5);
+
+// Colunas (sep=;):
+// [0]Empreendimento [1]Unidade  [2]Proprietario [3]DataContrato
+// [4]DataAtivacao   [5]DataSaida [6]Status       [7]Comissao
+// [8]BPO            [9]TaxaEnxoval [10]NomeIndicacao [11]StatusPagIndicacao
+// [12]MesAtivacao   [13]AnoAtivacao [14]MesSaida  [15]AnoSaida
+// [16]TempoContrato [17]Responsavel  [18]Observacao
+
+const rows = [];
+for (const line of dataLines) {
+    const cols = line.split(";");
+    if (cols.length < 7) continue;
+
+    const emp = (cols[0] || "").trim();
+    const unid = (cols[1] || "").trim();
+    const prop = (cols[2] || "").trim();
+
+    // Ignora linhas sem empreendimento ou sem número de unidade
+    if (!emp || !unid) continue;
+
+    rows.push({
+        empreendimento: emp,
+        numero: unid,
+        proprietario: prop === "-" || prop === "" ? null : prop,
+        data_fechamento: parseDate(cols[3]),
+        data_ativacao: parseDate(cols[4]),
+        data_baixa: parseDate(cols[5]),
+        status: mapStatus(cols[6]),
+        comissao_adm: parseComissao(cols[7]),
+        bpo: (cols[8] || "").trim() || null,
+        taxa_enxoval: (cols[9] || "").trim() || null,
+        nome_indicacao: (cols[10] || "").trim() || null,
+        status_pagamento_indicacao: (cols[11] || "").trim() || null,
+        responsavel_nome: (cols[17] || "").trim() || null,
+        observacoes: (cols[18] || "").trim() || null,
+    });
+}
+
+console.log(`✅ ${rows.length} linhas válidas encontradas no CSV`);
+
+// ─── EMPREENDIMENTOS ──────────────────────────────────────────────────────────
+console.log("🏢 Inserindo empreendimentos...");
+
+const empNomes = [...new Set(rows.map((r) => r.empreendimento))].sort();
+const empMap = new Map();
+
+const insertEmpStmt = db.prepare(`INSERT INTO empreendimentos (nome, cidade, estado) VALUES (?, ?, ?)`);
+for (const nome of empNomes) {
+    const result = insertEmpStmt.run(nome, "João Pessoa", "PB");
+    empMap.set(nome, result.lastInsertRowid);
+}
+
+console.log(`✅ ${empNomes.length} empreendimentos inseridos`);
+
+// ─── PROPRIETÁRIOS ────────────────────────────────────────────────────────────
+console.log("👥 Inserindo proprietários...");
+
+const propNomes = [...new Set(rows.map((r) => r.proprietario).filter(Boolean))].sort();
+const propMap = new Map();
+
+const insertPropStmt = db.prepare(`INSERT INTO proprietarios (nome) VALUES (?)`);
+for (const nome of propNomes) {
+    const result = insertPropStmt.run(nome);
+    propMap.set(nome, result.lastInsertRowid);
+}
+
+console.log(`✅ ${propNomes.length} proprietários inseridos`);
+
+// ─── UNIDADES ─────────────────────────────────────────────────────────────────
+console.log("🏠 Inserindo unidades...");
+
+const insertUnidadeStmt = db.prepare(`
+    INSERT INTO unidades (
+        empreendimento_id, numero, status,
+        proprietario_id, responsavel_id, observacoes,
+        data_fechamento, data_ativacao, data_baixa,
+        comissao_adm, bpo, taxa_enxoval,
+        nome_indicacao, status_pagamento_indicacao,
+        atualizado_em
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 `);
 
-insertUser.run('Administrador', 'admin@likehome.com', senha, 'admin', 'Geral');
-insertUser.run('Ana Marketing', 'ana@likehome.com', senhaUser, 'usuario', 'Marketing');
-insertUser.run('Carlos Comercial', 'carlos@likehome.com', senhaUser, 'usuario', 'Comercial');
-insertUser.run('Beatriz Atendimento', 'beatriz@likehome.com', senhaUser, 'usuario', 'Atendimento');
-insertUser.run('Pedro Precificação', 'pedro@likehome.com', senhaUser, 'usuario', 'Precificacao');
-insertUser.run('Fernanda Financeiro', 'fernanda@likehome.com', senhaUser, 'usuario', 'Financeiro');
-
-// Seed Empreendimentos
-const insertEmp = db.prepare(`INSERT OR IGNORE INTO empreendimentos (nome, endereco, cidade, estado) VALUES (?, ?, ?, ?)`);
-insertEmp.run('Residencial Maresias', 'Rua das Flores, 100', 'Jacumã', 'PB');
-insertEmp.run('Condomínio Sunset', 'Av. Beira Mar, 500', 'Conde', 'PB');
-insertEmp.run('Vila Costa', 'Rua do Sol, 22', 'Pitimbu', 'PB');
-
-// Seed Proprietários
-const insertProp = db.prepare(`INSERT OR IGNORE INTO proprietarios (nome, email, telefone) VALUES (?, ?, ?)`);
-insertProp.run('João Silva', 'joao@email.com', '83999990001');
-insertProp.run('Maria Santos', 'maria@email.com', '83999990002');
-insertProp.run('Roberto Lima', 'roberto@email.com', '83999990003');
-insertProp.run('Patricia Nunes', 'patricia@email.com', '83999990004');
-insertProp.run('Marcos Ferreira', 'marcos@email.com', '83999990005');
-
-// Seed Unidades
-const insertUnidade = db.prepare(`
-  INSERT OR IGNORE INTO unidades 
-  (empreendimento_id, numero, tipo, status, proprietario_id, responsavel_id, data_prospeccao, data_reuniao, data_fechamento, data_integracao, data_ativacao)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+const insertHistoricoStmt = db.prepare(`
+    INSERT INTO historico_status_unidade (unidade_id, status_novo, data_mudanca)
+    VALUES (?, ?, date('now'))
 `);
 
-insertUnidade.run(1, '101', 'Apartamento 1Q', 'Ativo', 1, 3, '2024-01-10', '2024-01-15', '2024-01-20', '2024-02-01', '2024-02-15', );
-insertUnidade.run(1, '102', 'Apartamento 2Q', 'Ativo', 2, 3, '2024-02-01', '2024-02-08', '2024-02-14', '2024-02-20', '2024-03-01');
-insertUnidade.run(1, '103', 'Studio', 'Reuniao', null, 3, '2024-03-01', '2024-03-10', null, null, null);
-insertUnidade.run(2, '201', 'Casa 3Q', 'Ativo', 3, 3, '2024-01-05', '2024-01-12', '2024-01-18', '2024-01-25', '2024-02-05');
-insertUnidade.run(2, '202', 'Apartamento 2Q', 'Integracao', 4, 3, '2024-03-05', '2024-03-12', '2024-03-18', '2024-03-25', null);
-insertUnidade.run(3, '301', 'Casa 2Q', 'Prospeccao', null, 3, '2024-03-20', null, null, null, null);
-insertUnidade.run(3, '302', 'Studio', 'Fechamento', 5, 3, '2024-02-15', '2024-02-22', '2024-03-01', null, null);
-insertUnidade.run(2, '203', 'Apartamento 1Q', 'Baixa', 2, 3, '2023-06-01', '2023-06-10', '2023-06-20', '2023-07-01', '2023-07-15');
+let unidadesInseridas = 0;
 
-// Seed Indicadores
+db.exec("BEGIN");
+try {
+    for (const row of rows) {
+        const empId = empMap.get(row.empreendimento);
+        if (!empId) continue;
+
+        const propId = row.proprietario ? propMap.get(row.proprietario) || null : null;
+        const respId = row.responsavel_nome ? respMap[row.responsavel_nome] || null : null;
+
+        const result = insertUnidadeStmt.run(
+            empId,
+            row.numero,
+            row.status,
+            propId,
+            respId,
+            row.observacoes || null,
+            row.data_fechamento || null,
+            row.data_ativacao || null,
+            row.data_baixa || null,
+            row.comissao_adm,
+            row.bpo || null,
+            row.taxa_enxoval || null,
+            row.nome_indicacao || null,
+            row.status_pagamento_indicacao || null,
+        );
+
+        insertHistoricoStmt.run(result.lastInsertRowid, row.status);
+        unidadesInseridas++;
+    }
+    db.exec("COMMIT");
+} catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+}
+console.log(`✅ ${unidadesInseridas} unidades inseridas`);
+
+// ─── INDICADORES ─────────────────────────────────────────────────────────────
+console.log("📊 Inserindo indicadores...");
+
 const insertInd = db.prepare(`
-  INSERT OR IGNORE INTO indicadores (departamento, tipo, nome, descricao, unidade_medida, meta_padrao)
-  VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO indicadores (departamento, tipo, nome, descricao, unidade_medida, meta_padrao)
+    VALUES (?, ?, ?, ?, ?, ?)
 `);
 
 // Marketing
-insertInd.run('Marketing', 'KRI', 'Leads qualificados de proprietários por mês', 'Leads de proprietários qualificados para captação', 'unidade', 20);
-insertInd.run('Marketing', 'KRI', 'Leads de hóspedes por mês', 'Total de leads de hóspedes no período', 'unidade', 100);
-insertInd.run('Marketing', 'KPI', 'Custo por lead (CPL)', 'Custo médio de aquisição por lead', 'R$', 50);
-insertInd.run('Marketing', 'KPI', 'Reuniões geradas para o comercial', 'Nº de reuniões agendadas via Marketing', 'unidade', 10);
-insertInd.run('Marketing', 'KPI', 'Taxa de qualificação dos leads', 'Lead → Reunião (%)', '%', 40);
+insertInd.run("Marketing", "KRI", "Leads qualificados de proprietários por mês", "Leads de proprietários qualificados para captação", "unidade", 20);
+insertInd.run("Marketing", "KRI", "Leads de hóspedes por mês", "Total de leads de hóspedes no período", "unidade", 100);
+insertInd.run("Marketing", "KPI", "Custo por lead (CPL)", "Custo médio de aquisição por lead", "R$", 50);
+insertInd.run("Marketing", "KPI", "Reuniões geradas para o comercial", "Nº de reuniões agendadas via Marketing", "unidade", 10);
+insertInd.run("Marketing", "KPI", "Taxa de qualificação dos leads", "Lead → Reunião (%)", "%", 40);
 
 // Comercial
-insertInd.run('Comercial', 'KRI', 'Crescimento líquido de unidades', 'Unidades captadas - unidades perdidas', 'unidade', 5);
-insertInd.run('Comercial', 'KPI', 'Número de reuniões realizadas', 'Total de reuniões comerciais no período', 'unidade', 15);
-insertInd.run('Comercial', 'KPI', 'Taxa de conversão reunião → contrato', 'Percentual de reuniões que geram contrato', '%', 60);
-insertInd.run('Comercial', 'KPI', 'Tempo médio de fechamento', 'Dias médios entre 1ª reunião e contrato assinado', 'dias', 15);
+insertInd.run("Comercial", "KRI", "Crescimento líquido de unidades", "Unidades captadas - unidades perdidas", "unidade", 5);
+insertInd.run("Comercial", "KPI", "Número de reuniões realizadas", "Total de reuniões comerciais no período", "unidade", 15);
+insertInd.run("Comercial", "KPI", "Taxa de conversão reunião → contrato", "Percentual de reuniões que geram contrato", "%", 60);
+insertInd.run("Comercial", "KPI", "Tempo médio de fechamento", "Dias médios entre 1ª reunião e contrato assinado", "dias", 15);
 
 // Atendimento
-insertInd.run('Atendimento', 'KRI', 'Nota média nas OTAs', 'Média das notas nas plataformas (Airbnb, Booking etc)', 'nota', 4.7);
-insertInd.run('Atendimento', 'KPI', 'Tempo médio de resposta ao hóspede', 'Horas para 1ª resposta ao hóspede', 'horas', 2);
-insertInd.run('Atendimento', 'KPI', 'Taxa de resolução no primeiro contato', 'Chamados resolvidos sem escalonamento (%)', '%', 80);
-insertInd.run('Atendimento', 'KPI', 'Reclamações por reserva', 'Reclamações / total de reservas', 'unidade', 0.05);
+insertInd.run("Atendimento", "KRI", "Nota média nas OTAs", "Média das notas nas plataformas (Airbnb, Booking etc)", "nota", 4.7);
+insertInd.run("Atendimento", "KPI", "Tempo médio de resposta ao hóspede", "Horas para 1ª resposta ao hóspede", "horas", 2);
+insertInd.run("Atendimento", "KPI", "Taxa de resolução no primeiro contato", "Chamados resolvidos sem escalonamento (%)", "%", 80);
+insertInd.run("Atendimento", "KPI", "Reclamações por reserva", "Reclamações / total de reservas", "unidade", 0.05);
 
 // Precificacao
-insertInd.run('Precificacao', 'KRI', 'Receita média por unidade', 'Receita total / unidades ativas', 'R$', 3500);
-insertInd.run('Precificacao', 'KPI', 'Taxa de ocupação', 'Dias ocupados / dias disponíveis (%)', '%', 70);
-insertInd.run('Precificacao', 'KPI', 'Diária média (ADR)', 'Average Daily Rate das unidades', 'R$', 250);
-insertInd.run('Precificacao', 'KPI', 'Ranking dos anúncios nas OTAs', 'Posição média nos resultados das OTAs', 'posição', 3);
+insertInd.run("Precificacao", "KRI", "Receita média por unidade", "Receita total / unidades ativas", "R$", 3500);
+insertInd.run("Precificacao", "KPI", "Taxa de ocupação", "Dias ocupados / dias disponíveis (%)", "%", 70);
+insertInd.run("Precificacao", "KPI", "Diária média (ADR)", "Average Daily Rate das unidades", "R$", 250);
+insertInd.run("Precificacao", "KPI", "Ranking dos anúncios nas OTAs", "Posição média nos resultados das OTAs", "posição", 3);
 
 // Financeiro
-insertInd.run('Financeiro', 'KRI', 'Resultado operacional (EBITDA)', 'EBITDA mensal da empresa', 'R$', 50000);
-insertInd.run('Financeiro', 'KRI', 'Resultado mensal consolidado (DRE)', 'Resultado líquido do mês (DRE)', 'R$', 30000);
-insertInd.run('Financeiro', 'KPI', 'Receita média por unidade', 'Receita total / unidades ativas', 'R$', 3500);
-insertInd.run('Financeiro', 'KPI', 'Previsibilidade de fluxo de caixa', 'Realizado / projetado (%)', '%', 90);
+insertInd.run("Financeiro", "KRI", "Resultado operacional (EBITDA)", "EBITDA mensal da empresa", "R$", 50000);
+insertInd.run("Financeiro", "KRI", "Resultado mensal consolidado (DRE)", "Resultado líquido do mês (DRE)", "R$", 30000);
+insertInd.run("Financeiro", "KPI", "Receita média por unidade", "Receita total / unidades ativas", "R$", 3500);
+insertInd.run("Financeiro", "KPI", "Previsibilidade de fluxo de caixa", "Realizado / projetado (%)", "%", 90);
 
-// Seed Lançamentos (últimos 6 meses)
+// ─── LANÇAMENTOS DE EXEMPLO ────────────────────────────────────────────────────
 const insertLanc = db.prepare(`
-  INSERT OR IGNORE INTO lancamentos_indicadores (indicador_id, competencia, valor_realizado, meta, usuario_id)
-  VALUES (?, ?, ?, ?, ?)
+    INSERT OR IGNORE INTO lancamentos_indicadores (indicador_id, competencia, valor_realizado, meta, usuario_id)
+    VALUES (?, ?, ?, ?, ?)
 `);
 
-const meses = ['2024-10', '2024-11', '2024-12', '2025-01', '2025-02', '2025-03'];
-const valoresMkt1 = [18, 22, 25, 19, 24, 27];
-const valoresMkt2 = [85, 92, 110, 78, 95, 103];
-const valoresMktCPL = [55, 48, 45, 60, 47, 42];
-const valoresMktReu = [8, 11, 13, 9, 12, 14];
-const valoresMktTaxa = [35, 42, 48, 38, 44, 50];
+const meses = ["2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03"];
 
-meses.forEach((mes, i) => {
-  insertLanc.run(1, mes, valoresMkt1[i], 20, 2);
-  insertLanc.run(2, mes, valoresMkt2[i], 100, 2);
-  insertLanc.run(3, mes, valoresMktCPL[i], 50, 2);
-  insertLanc.run(4, mes, valoresMktReu[i], 10, 2);
-  insertLanc.run(5, mes, valoresMktTaxa[i], 40, 2);
-});
+const lancamentos = [
+    // id  values                             meta   dep
+    [1, [18, 22, 25, 19, 24, 27], 20],
+    [2, [85, 92, 110, 78, 95, 103], 100],
+    [3, [55, 48, 45, 60, 47, 42], 50],
+    [4, [8, 11, 13, 9, 12, 14], 10],
+    [5, [35, 42, 48, 38, 44, 50], 40],
+    [6, [3, 5, 6, 2, 4, 5], 5],
+    [7, [10, 14, 16, 11, 15, 17], 15],
+    [8, [55, 62, 68, 52, 65, 70], 60],
+    [9, [18, 14, 12, 20, 15, 13], 15],
+    [10, [4.5, 4.6, 4.7, 4.4, 4.7, 4.8], 4.7],
+    [11, [2.5, 2.1, 1.8, 2.8, 2.0, 1.6], 2],
+    [12, [72, 76, 80, 70, 78, 82], 80],
+    [13, [0.08, 0.06, 0.05, 0.09, 0.05, 0.04], 0.05],
+    [14, [3200, 3400, 3800, 3100, 3500, 3700], 3500],
+    [15, [68, 72, 75, 65, 71, 74], 70],
+    [16, [230, 245, 260, 225, 248, 255], 250],
+    [17, [4, 3, 3, 5, 3, 2], 3],
+    [18, [42000, 48000, 55000, 40000, 50000, 52000], 50000],
+    [19, [28000, 32000, 38000, 25000, 33000, 35000], 30000],
+    [20, [3200, 3400, 3800, 3100, 3500, 3700], 3500],
+    [21, [85, 88, 92, 83, 90, 91], 90],
+];
 
-const valoresCom1 = [3, 5, 6, 2, 4, 5];
-const valoresCom2 = [10, 14, 16, 11, 15, 17];
-const valoresCom3 = [55, 62, 68, 52, 65, 70];
-const valoresCom4 = [18, 14, 12, 20, 15, 13];
+for (const [indId, valores, meta] of lancamentos) {
+    meses.forEach((mes, i) => {
+        insertLanc.run(indId, mes, valores[i], meta, pHenriqueId);
+    });
+}
 
-meses.forEach((mes, i) => {
-  insertLanc.run(6, mes, valoresCom1[i], 5, 3);
-  insertLanc.run(7, mes, valoresCom2[i], 15, 3);
-  insertLanc.run(8, mes, valoresCom3[i], 60, 3);
-  insertLanc.run(9, mes, valoresCom4[i], 15, 3);
-});
+// ─── RESUMO ───────────────────────────────────────────────────────────────────
+const totalUnidades = db.prepare("SELECT COUNT(*) as t FROM unidades").get().t;
+const totalEmps = db.prepare("SELECT COUNT(*) as t FROM empreendimentos").get().t;
+const totalProps = db.prepare("SELECT COUNT(*) as t FROM proprietarios").get().t;
+const totalUsers = db.prepare("SELECT COUNT(*) as t FROM usuarios").get().t;
+const ativas = db.prepare("SELECT COUNT(*) as t FROM unidades WHERE status = 'Ativo'").get().t;
+const baixas = db.prepare("SELECT COUNT(*) as t FROM unidades WHERE status = 'Baixa'").get().t;
+const emInteg = db.prepare("SELECT COUNT(*) as t FROM unidades WHERE status = 'Integracao'").get().t;
+const fechamento = db.prepare("SELECT COUNT(*) as t FROM unidades WHERE status = 'Fechamento'").get().t;
 
-const valoresAtd1 = [4.5, 4.6, 4.7, 4.4, 4.7, 4.8];
-const valoresAtd2 = [2.5, 2.1, 1.8, 2.8, 2.0, 1.6];
-const valoresAtd3 = [72, 76, 80, 70, 78, 82];
-const valoresAtd4 = [0.08, 0.06, 0.05, 0.09, 0.05, 0.04];
-
-meses.forEach((mes, i) => {
-  insertLanc.run(10, mes, valoresAtd1[i], 4.7, 4);
-  insertLanc.run(11, mes, valoresAtd2[i], 2, 4);
-  insertLanc.run(12, mes, valoresAtd3[i], 80, 4);
-  insertLanc.run(13, mes, valoresAtd4[i], 0.05, 4);
-});
-
-const valoresPrec1 = [3100, 3300, 3600, 2900, 3400, 3700];
-const valoresPrec2 = [62, 66, 72, 58, 68, 74];
-const valoresPrec3 = [220, 235, 255, 210, 240, 260];
-const valoresPrec4 = [4, 3, 3, 5, 3, 2];
-
-meses.forEach((mes, i) => {
-  insertLanc.run(14, mes, valoresPrec1[i], 3500, 5);
-  insertLanc.run(15, mes, valoresPrec2[i], 70, 5);
-  insertLanc.run(16, mes, valoresPrec3[i], 250, 5);
-  insertLanc.run(17, mes, valoresPrec4[i], 3, 5);
-});
-
-const valoresFin1 = [42000, 47000, 55000, 38000, 50000, 58000];
-const valoresFin2 = [28000, 32000, 38000, 24000, 35000, 42000];
-const valoresFin3 = [3100, 3300, 3600, 2900, 3400, 3700];
-const valoresFin4 = [85, 90, 94, 80, 91, 96];
-
-meses.forEach((mes, i) => {
-  insertLanc.run(18, mes, valoresFin1[i], 50000, 6);
-  insertLanc.run(19, mes, valoresFin2[i], 30000, 6);
-  insertLanc.run(20, mes, valoresFin3[i], 3500, 6);
-  insertLanc.run(21, mes, valoresFin4[i], 90, 6);
-});
-
-console.log('✅ Seed concluído com sucesso!');
-console.log('');
-console.log('👤 Usuários criados:');
-console.log('  admin@likehome.com / admin123 (Administrador)');
-console.log('  ana@likehome.com / user123 (Marketing)');
-console.log('  carlos@likehome.com / user123 (Comercial)');
-console.log('  beatriz@likehome.com / user123 (Atendimento)');
-console.log('  pedro@likehome.com / user123 (Precificação)');
-console.log('  fernanda@likehome.com / user123 (Financeiro)');
+console.log("\n══════════════════════════════════════════════════");
+console.log("  SEED CONCLUÍDO COM SUCESSO!");
+console.log("══════════════════════════════════════════════════");
+console.log(`  Usuários:           ${totalUsers}`);
+console.log(`  Empreendimentos:    ${totalEmps}`);
+console.log(`  Proprietários:      ${totalProps}`);
+console.log(`  Unidades (total):   ${totalUnidades}`);
+console.log(`    → Ativas:         ${ativas}`);
+console.log(`    → Em Integração:  ${emInteg}`);
+console.log(`    → Fechamento:     ${fechamento}`);
+console.log(`    → Baixa/Inativo:  ${baixas}`);
+console.log("══════════════════════════════════════════════════\n");
+console.log("Credenciais de acesso:");
+console.log("  Admin  → admin@likehome.com   / admin123");
+console.log("  Comercial → steffany@likehome.com / user123");
+console.log("  Comercial → jessica@likehome.com  / user123\n");

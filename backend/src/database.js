@@ -101,9 +101,19 @@ function initDatabase() {
   `);
 }
 
-// Adiciona atualizado_em se ainda não existir (migrações seguras)
-try {
-    db.exec(`ALTER TABLE unidades ADD COLUMN atualizado_em DATETIME`);
-} catch (_) {}
+// Migrações seguras — não lançam erro se coluna já existe
+const alterações = [
+    `ALTER TABLE unidades ADD COLUMN atualizado_em DATETIME`,
+    `ALTER TABLE unidades ADD COLUMN comissao_adm REAL`,
+    `ALTER TABLE unidades ADD COLUMN bpo TEXT`,
+    `ALTER TABLE unidades ADD COLUMN taxa_enxoval TEXT`,
+    `ALTER TABLE unidades ADD COLUMN nome_indicacao TEXT`,
+    `ALTER TABLE unidades ADD COLUMN status_pagamento_indicacao TEXT`,
+];
+for (const sql of alterações) {
+    try {
+        db.exec(sql);
+    } catch (_) {}
+}
 
 module.exports = { db, initDatabase };
