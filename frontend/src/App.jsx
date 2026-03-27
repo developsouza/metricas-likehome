@@ -12,6 +12,7 @@ import Indicadores from "./pages/admin/Indicadores";
 import Usuarios from "./pages/admin/Usuarios";
 import Unidades from "./pages/admin/Unidades";
 import Proprietarios from "./pages/admin/Proprietarios";
+import Importacao from "./pages/importacao/Importacao";
 
 function PrivateRoute({ children, adminOnly = false }) {
     const { usuario, loading } = useAuth();
