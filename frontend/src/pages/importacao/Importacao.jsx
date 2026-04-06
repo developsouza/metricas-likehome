@@ -273,8 +273,9 @@ export default function Importacao() {
                         <div style={s.statsGrid}>
                             <Stat label="Empreendimentos criados" valor={resultado.empreendimentos} />
                             <Stat label="Proprietários criados" valor={resultado.proprietarios} />
-                            <Stat label="Unidades importadas" valor={resultado.unidades} cor="#16a34a" />
-                            <Stat label="Unidades já existentes (ignoradas)" valor={resultado.ignoradas} cor="#6b7280" />
+                            <Stat label="Unidades novas" valor={resultado.unidades} cor="#16a34a" />
+                            <Stat label="Unidades atualizadas" valor={resultado.atualizadas} cor="#2563eb" />
+                            <Stat label="Sem alteração" valor={resultado.ignoradas} cor="#6b7280" />
                         </div>
                     ) : (
                         <div style={s.statsGrid}>

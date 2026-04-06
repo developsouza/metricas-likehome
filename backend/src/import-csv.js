@@ -22,7 +22,11 @@ initDatabase();
 
 function parseDate(s) {
     if (!s || !s.trim() || s.trim() === "-") return null;
-    const parts = s.trim().split("/");
+    const t = s.trim();
+    // Formato ISO: AAAA-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+    // Formato DD/MM/AAAA
+    const parts = t.split("/");
     if (parts.length !== 3) return null;
     const [d, m, y] = parts;
     const year = parseInt(y, 10);
@@ -55,8 +59,17 @@ if (!fs.existsSync(csvPath)) {
 }
 
 console.log("📄 Lendo CSV...");
-const csvText = fs.readFileSync(csvPath, "utf-8");
-const dataLines = csvText.split(/\r?\n/).slice(5); // pula 5 linhas de cabeçalho
+const csvText = fs.readFileSync(csvPath, "utf-8").replace(/^\uFEFF/, ""); // remove BOM
+// Detecta linha de cabeçalho real (pula linhas de metadados até encontrar "Empreendimento")
+const allLines = csvText.split(/\r?\n/);
+let dataStartIdx = 5; // padrão: 5 linhas de cabeçalho
+for (let i = 0; i < Math.min(allLines.length, 10); i++) {
+    if ((allLines[i] || "").trim().toLowerCase().startsWith("empreendimento")) {
+        dataStartIdx = i + 1;
+        break;
+    }
+}
+const dataLines = allLines.slice(dataStartIdx);
 
 const rows = [];
 for (const line of dataLines) {
@@ -87,6 +100,39 @@ for (const line of dataLines) {
 
 console.log(`✅ ${rows.length} linhas válidas no CSV`);
 
+// ─── RESOLVER DUPLICATAS DO CSV ───────────────────────────────────────────────
+// Quando a mesma unidade (empreendimento + número) aparece mais de uma vez no CSV
+// (ex.: unidade que saiu e voltou), mantém apenas o registro de maior prioridade:
+// Ativo > Integração > Fechamento > Reunião > Prospecção > Baixa/Inativo
+// Entre mesma prioridade, prefere o com data de ativação ou fechamento mais recente.
+const STATUS_PRIORITY = { Ativo: 5, Integracao: 4, Fechamento: 3, Reuniao: 2, Prospeccao: 1, Baixa: 0 };
+
+const bestRowsMap = new Map(); // "emp|numero" → row com maior prioridade
+for (const row of rows) {
+    const key = `${row.empreendimento}|${row.numero}`;
+    if (!bestRowsMap.has(key)) {
+        bestRowsMap.set(key, row);
+    } else {
+        const prev = bestRowsMap.get(key);
+        const prevPrio = STATUS_PRIORITY[prev.status] ?? -1;
+        const newPrio = STATUS_PRIORITY[row.status] ?? -1;
+        if (newPrio > prevPrio) {
+            bestRowsMap.set(key, row);
+        } else if (newPrio === prevPrio) {
+            // Prefere contrato mais recente: data_fechamento (contrato) tem prioridade sobre data_ativacao
+            const prevDate = prev.data_fechamento || prev.data_ativacao || "";
+            const newDate = row.data_fechamento || row.data_ativacao || "";
+            if (newDate > prevDate) bestRowsMap.set(key, row);
+        }
+    }
+}
+
+const rowsUnicos = [...bestRowsMap.values()];
+const duplicatasIgnoradas = rows.length - rowsUnicos.length;
+if (duplicatasIgnoradas > 0) {
+    console.log(`ℹ️  ${duplicatasIgnoradas} linha(s) duplicada(s) no CSV resolvidas (mantido contrato de maior prioridade por unidade)`);
+}
+
 // ─── MAPEAR USUÁRIOS RESPONSÁVEIS ─────────────────────────────────────────────
 
 const respMap = {};
@@ -102,7 +148,7 @@ for (const u of usuarios) {
 
 console.log("🏢 Importando empreendimentos...");
 
-const empNomes = [...new Set(rows.map((r) => r.empreendimento))].sort();
+const empNomes = [...new Set(rowsUnicos.map((r) => r.empreendimento))].sort();
 const empMap = new Map();
 
 // Carrega empreendimentos já existentes no banco
@@ -131,7 +177,7 @@ console.log(`✅ ${empsInseridos} novos empreendimentos inseridos (total: ${empM
 
 console.log("👥 Importando proprietários...");
 
-const propNomes = [...new Set(rows.map((r) => r.proprietario).filter(Boolean))].sort();
+const propNomes = [...new Set(rowsUnicos.map((r) => r.proprietario).filter(Boolean))].sort();
 const propMap = new Map();
 
 const propsExistentes = db.prepare("SELECT id, nome FROM proprietarios").all();
@@ -160,7 +206,7 @@ console.log(`✅ ${propsInseridos} novos proprietários inseridos (total: ${prop
 console.log("🏠 Importando unidades...");
 
 const insertUnidadeStmt = db.prepare(`
-    INSERT OR IGNORE INTO unidades (
+    INSERT INTO unidades (
         empreendimento_id, numero, status,
         proprietario_id, responsavel_id, observacoes,
         data_fechamento, data_ativacao, data_baixa,
@@ -170,48 +216,79 @@ const insertUnidadeStmt = db.prepare(`
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 `);
 
+const checkUnidadeStmt = db.prepare(`SELECT id FROM unidades WHERE empreendimento_id = ? AND numero = ? LIMIT 1`);
+
+const updateUnidadeStmt = db.prepare(`
+    UPDATE unidades SET
+        status = ?, proprietario_id = ?, responsavel_id = ?, observacoes = ?,
+        data_fechamento = ?, data_ativacao = ?, data_baixa = ?,
+        comissao_adm = ?, bpo = ?, taxa_enxoval = ?,
+        nome_indicacao = ?, status_pagamento_indicacao = ?,
+        atualizado_em = CURRENT_TIMESTAMP
+    WHERE empreendimento_id = ? AND numero = ?
+`);
+
 const insertHistoricoStmt = db.prepare(`
     INSERT INTO historico_status_unidade (unidade_id, status_novo, data_mudanca)
     VALUES (?, ?, date('now'))
 `);
 
 let unidadesInseridas = 0;
-let unidadesIgnoradas = 0;
+let unidadesAtualizadas = 0;
 
 db.exec("BEGIN");
 try {
-    for (const row of rows) {
+    for (const row of rowsUnicos) {
         const empId = empMap.get(row.empreendimento);
-        if (!empId) {
-            unidadesIgnoradas++;
-            continue;
-        }
+        if (!empId) continue;
 
         const propId = row.proprietario ? propMap.get(row.proprietario) || null : null;
         const respId = row.responsavel_nome ? respMap[row.responsavel_nome] || null : null;
 
-        const result = insertUnidadeStmt.run(
-            empId,
-            row.numero,
-            row.status,
-            propId,
-            respId,
-            row.observacoes || null,
-            row.data_fechamento || null,
-            row.data_ativacao || null,
-            row.data_baixa || null,
-            row.comissao_adm,
-            row.bpo || null,
-            row.taxa_enxoval || null,
-            row.nome_indicacao || null,
-            row.status_pagamento_indicacao || null,
-        );
+        // Verifica se a unidade já existe antes de inserir (evita duplicatas sem precisar de UNIQUE constraint)
+        const existing = checkUnidadeStmt.get(empId, row.numero);
 
-        if (result.lastInsertRowid) {
-            insertHistoricoStmt.run(result.lastInsertRowid, row.status);
-            unidadesInseridas++;
+        if (existing) {
+            // Sincroniza datas e campos com o CSV
+            updateUnidadeStmt.run(
+                row.status,
+                propId,
+                respId,
+                row.observacoes || null,
+                row.data_fechamento || null,
+                row.data_ativacao || null,
+                row.data_baixa || null,
+                row.comissao_adm,
+                row.bpo || null,
+                row.taxa_enxoval || null,
+                row.nome_indicacao || null,
+                row.status_pagamento_indicacao || null,
+                empId,
+                row.numero,
+            );
+            unidadesAtualizadas++;
         } else {
-            unidadesIgnoradas++;
+            // Insere nova unidade
+            const result = insertUnidadeStmt.run(
+                empId,
+                row.numero,
+                row.status,
+                propId,
+                respId,
+                row.observacoes || null,
+                row.data_fechamento || null,
+                row.data_ativacao || null,
+                row.data_baixa || null,
+                row.comissao_adm,
+                row.bpo || null,
+                row.taxa_enxoval || null,
+                row.nome_indicacao || null,
+                row.status_pagamento_indicacao || null,
+            );
+            if (result.lastInsertRowid) {
+                insertHistoricoStmt.run(result.lastInsertRowid, row.status);
+                unidadesInseridas++;
+            }
         }
     }
     db.exec("COMMIT");
@@ -220,7 +297,7 @@ try {
     throw e;
 }
 
-console.log(`✅ ${unidadesInseridas} unidades inseridas (${unidadesIgnoradas} ignoradas — duplicatas)`);
+console.log(`✅ ${unidadesInseridas} novas unidades inseridas, ${unidadesAtualizadas} atualizadas com datas do CSV`);
 
 // ─── RESUMO ───────────────────────────────────────────────────────────────────
 
