@@ -487,9 +487,9 @@ function importar(req, res) {
     try {
         let resultado;
         if (tipo === "portfolio") {
-            resultado = importarPortfolio(req.file, req.usuario.id);
+            resultado = importarPortfolio(req.file, req.user.id);
         } else {
-            resultado = importarLancamentos(req.file, req.usuario.id);
+            resultado = importarLancamentos(req.file, req.user.id);
         }
         return res.json({ sucesso: true, tipo, ...resultado });
     } catch (e) {
