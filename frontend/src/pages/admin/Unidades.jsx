@@ -271,6 +271,9 @@ export default function Unidades() {
     const [filtroStatus, setFiltroStatus] = useState("");
     const [filtroEmp, setFiltroEmp] = useState("");
     const [busca, setBusca] = useState("");
+    const [filtroCampoData, setFiltroCampoData] = useState("data_ativacao");
+    const [filtroDataDe, setFiltroDataDe] = useState("");
+    const [filtroDataAte, setFiltroDataAte] = useState("");
     const [pagina, setPagina] = useState(1);
 
     useEffect(() => {
@@ -278,10 +281,10 @@ export default function Unidades() {
     }, []);
     useEffect(() => {
         carregar();
-    }, [filtroStatus, filtroEmp]);
+    }, [filtroStatus, filtroEmp, filtroDataDe, filtroDataAte, filtroCampoData]);
     useEffect(() => {
         setPagina(1);
-    }, [filtroStatus, filtroEmp, busca]);
+    }, [filtroStatus, filtroEmp, busca, filtroDataDe, filtroDataAte, filtroCampoData]);
 
     async function carregarAuxiliares() {
         const [re, rp, ru] = await Promise.all([api.get("/empreendimentos"), api.get("/proprietarios"), api.get("/usuarios")]);
@@ -295,6 +298,11 @@ export default function Unidades() {
         const params = new URLSearchParams();
         if (filtroStatus) params.append("status", filtroStatus);
         if (filtroEmp) params.append("empreendimento_id", filtroEmp);
+        if (filtroDataDe || filtroDataAte) {
+            params.append("campo_data", filtroCampoData);
+            if (filtroDataDe) params.append("data_de", filtroDataDe);
+            if (filtroDataAte) params.append("data_ate", filtroDataAte);
+        }
         const r = await api.get(`/unidades?${params}`);
         setLista(r.data);
         setLoading(false);
@@ -373,6 +381,40 @@ export default function Unidades() {
                                 ))}
                             </select>
                         </div>
+                    </div>
+                    <div className="form-grid" style={{ marginBottom: 0, marginTop: 12 }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">Campo de Data</label>
+                            <select className="form-control" value={filtroCampoData} onChange={(e) => setFiltroCampoData(e.target.value)}>
+                                <option value="data_prospeccao">Prospecção</option>
+                                <option value="data_reuniao">Reunião</option>
+                                <option value="data_fechamento">Contrato</option>
+                                <option value="data_integracao">Integração</option>
+                                <option value="data_ativacao">Ativação</option>
+                                <option value="data_baixa">Baixa</option>
+                            </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">De</label>
+                            <input type="date" className="form-control" value={filtroDataDe} onChange={(e) => setFiltroDataDe(e.target.value)} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">Até</label>
+                            <input type="date" className="form-control" value={filtroDataAte} onChange={(e) => setFiltroDataAte(e.target.value)} />
+                        </div>
+                        {(filtroDataDe || filtroDataAte) && (
+                            <div className="form-group" style={{ marginBottom: 0, display: "flex", alignItems: "flex-end" }}>
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => {
+                                        setFiltroDataDe("");
+                                        setFiltroDataAte("");
+                                    }}
+                                >
+                                    Limpar datas
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

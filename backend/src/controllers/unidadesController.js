@@ -1,7 +1,9 @@
 const { db } = require("../database");
 
+const CAMPOS_DATA_VALIDOS = ["data_prospeccao", "data_reuniao", "data_fechamento", "data_integracao", "data_ativacao", "data_baixa"];
+
 function listar(req, res) {
-    const { status, empreendimento_id, responsavel_id } = req.query;
+    const { status, empreendimento_id, responsavel_id, campo_data, data_de, data_ate } = req.query;
     let sql = `
     SELECT u.*, 
       e.nome as empreendimento_nome,
@@ -25,6 +27,16 @@ function listar(req, res) {
     if (responsavel_id) {
         sql += " AND u.responsavel_id = ?";
         params.push(responsavel_id);
+    }
+    if (campo_data && CAMPOS_DATA_VALIDOS.includes(campo_data)) {
+        if (data_de) {
+            sql += ` AND u.${campo_data} >= ?`;
+            params.push(data_de);
+        }
+        if (data_ate) {
+            sql += ` AND u.${campo_data} <= ?`;
+            params.push(data_ate);
+        }
     }
     sql += " ORDER BY e.nome, u.numero";
 
