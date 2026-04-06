@@ -348,9 +348,9 @@ export default function Unidades() {
             </div>
 
             <div className="card" style={{ marginBottom: 16 }}>
-                <div className="card-body">
-                    <div className="form-grid" style={{ marginBottom: 0 }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
+                <div className="card-body" style={{ paddingBottom: 12 }}>
+                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+                        <div style={{ flex: "2 1 200px" }}>
                             <label className="form-label">Buscar</label>
                             <input
                                 className="form-control"
@@ -359,8 +359,8 @@ export default function Unidades() {
                                 onChange={(e) => setBusca(e.target.value)}
                             />
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label">Filtrar por Empreendimento</label>
+                        <div style={{ flex: "2 1 160px" }}>
+                            <label className="form-label">Empreendimento</label>
                             <select className="form-control" value={filtroEmp} onChange={(e) => setFiltroEmp(e.target.value)}>
                                 <option value="">Todos</option>
                                 {empreendimentos.map((e) => (
@@ -370,8 +370,8 @@ export default function Unidades() {
                                 ))}
                             </select>
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label">Filtrar por Status</label>
+                        <div style={{ flex: "1 1 130px" }}>
+                            <label className="form-label">Status</label>
                             <select className="form-control" value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
                                 <option value="">Todos</option>
                                 {STATUS_LIST.map((s) => (
@@ -381,10 +381,8 @@ export default function Unidades() {
                                 ))}
                             </select>
                         </div>
-                    </div>
-                    <div className="form-grid" style={{ marginBottom: 0, marginTop: 12 }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label">Campo de Data</label>
+                        <div style={{ flex: "1 1 130px" }}>
+                            <label className="form-label">Data de</label>
                             <select className="form-control" value={filtroCampoData} onChange={(e) => setFiltroCampoData(e.target.value)}>
                                 <option value="data_prospeccao">Prospecção</option>
                                 <option value="data_reuniao">Reunião</option>
@@ -394,16 +392,16 @@ export default function Unidades() {
                                 <option value="data_baixa">Baixa</option>
                             </select>
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
+                        <div style={{ flex: "1 1 130px" }}>
                             <label className="form-label">De</label>
                             <input type="date" className="form-control" value={filtroDataDe} onChange={(e) => setFiltroDataDe(e.target.value)} />
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
+                        <div style={{ flex: "1 1 130px" }}>
                             <label className="form-label">Até</label>
                             <input type="date" className="form-control" value={filtroDataAte} onChange={(e) => setFiltroDataAte(e.target.value)} />
                         </div>
                         {(filtroDataDe || filtroDataAte) && (
-                            <div className="form-group" style={{ marginBottom: 0, display: "flex", alignItems: "flex-end" }}>
+                            <div style={{ paddingBottom: 2 }}>
                                 <button
                                     className="btn btn-secondary"
                                     onClick={() => {
@@ -411,7 +409,7 @@ export default function Unidades() {
                                         setFiltroDataAte("");
                                     }}
                                 >
-                                    Limpar datas
+                                    ✕
                                 </button>
                             </div>
                         )}
