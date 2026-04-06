@@ -1,11 +1,11 @@
 const { db } = require("../database");
 
-// Calcula crescimento líquido combinando:
-// 1) data_ativacao / data_baixa da tabela unidades — fonte primária (dados reais do CSV)
-// 2) historico_status_unidade — apenas para unidades sem essas datas (gerenciadas via CRUD)
+// Calcula crescimento líquido usando exclusivamente as datas reais das unidades (vindas do CSV).
+// O historico_status_unidade NÃO é usado aqui porque suas datas refletem quando o registro
+// foi criado no sistema (import), não quando o evento comercial aconteceu de verdade.
 function calcularCrescimentoLiquido(competencia) {
-    // Captadas: unidades com data_ativacao real no mês (CSV é fonte verdade)
-    const dCaptadas =
+    // Captadas: unidades cuja data de ativação real caiu neste mês
+    const captadas =
         db
             .prepare(
                 `SELECT COUNT(DISTINCT id) AS n FROM unidades
@@ -13,43 +13,16 @@ function calcularCrescimentoLiquido(competencia) {
             )
             .get(competencia)?.n || 0;
 
-    // Captadas via historico apenas para unidades sem data_ativacao
-    const hCaptadas =
-        db
-            .prepare(
-                `SELECT COUNT(DISTINCT h.unidade_id) AS n
-       FROM historico_status_unidade h
-       JOIN unidades u ON u.id = h.unidade_id
-       WHERE h.status_novo = 'Ativo'
-         AND strftime('%Y-%m', h.data_mudanca) = ?
-         AND u.data_ativacao IS NULL`,
-            )
-            .get(competencia)?.n || 0;
-
-    // Perdidas: unidades com data_baixa real no mês
-    const dPerdidas =
+    // Saídas: unidades com status Baixa cuja data de saída real foi neste mês
+    const perdidas =
         db
             .prepare(
                 `SELECT COUNT(DISTINCT id) AS n FROM unidades
-       WHERE strftime('%Y-%m', data_baixa) = ?`,
+       WHERE status = 'Baixa'
+         AND strftime('%Y-%m', data_baixa) = ?`,
             )
             .get(competencia)?.n || 0;
 
-    // Perdidas via historico apenas para unidades sem data_baixa
-    const hPerdidas =
-        db
-            .prepare(
-                `SELECT COUNT(DISTINCT h.unidade_id) AS n
-       FROM historico_status_unidade h
-       JOIN unidades u ON u.id = h.unidade_id
-       WHERE h.status_novo = 'Baixa'
-         AND strftime('%Y-%m', h.data_mudanca) = ?
-         AND u.data_baixa IS NULL`,
-            )
-            .get(competencia)?.n || 0;
-
-    const captadas = dCaptadas + hCaptadas;
-    const perdidas = dPerdidas + hPerdidas;
     return { captadas, perdidas, liquido: captadas - perdidas };
 }
 
