@@ -275,6 +275,18 @@ export default function Unidades() {
     const [filtroDataDe, setFiltroDataDe] = useState("");
     const [filtroDataAte, setFiltroDataAte] = useState("");
     const [pagina, setPagina] = useState(1);
+    const [ordenacao, setOrdenacao] = useState("");
+    const [direcao, setDirecao] = useState("asc");
+
+    function toggleOrdem(campo) {
+        if (ordenacao === campo) {
+            setDirecao((d) => (d === "asc" ? "desc" : "asc"));
+        } else {
+            setOrdenacao(campo);
+            setDirecao("asc");
+        }
+        setPagina(1);
+    }
 
     useEffect(() => {
         carregarAuxiliares();
@@ -324,8 +336,18 @@ export default function Unidades() {
           )
         : lista;
 
-    const totalPaginas = Math.max(1, Math.ceil(listaBuscada.length / POR_PAGINA));
-    const listaPaginada = listaBuscada.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+    const listaOrdenada = ordenacao
+        ? [...listaBuscada].sort((a, b) => {
+              const va = a[ordenacao] ?? "";
+              const vb = b[ordenacao] ?? "";
+              const cmp =
+                  typeof va === "number" && typeof vb === "number" ? va - vb : String(va).localeCompare(String(vb), "pt-BR", { numeric: true });
+              return direcao === "asc" ? cmp : -cmp;
+          })
+        : listaBuscada;
+
+    const totalPaginas = Math.max(1, Math.ceil(listaOrdenada.length / POR_PAGINA));
+    const listaPaginada = listaOrdenada.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
     return (
         <div>
@@ -426,20 +448,33 @@ export default function Unidades() {
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Empreendimento</th>
-                                        <th>Nº</th>
-                                        <th>Status</th>
-                                        <th>Proprietário</th>
-                                        <th>% Adm</th>
-                                        <th>BPO</th>
-                                        <th>Contrato</th>
-                                        <th>Ativação</th>
-                                        <th>Responsável</th>
+                                        {[
+                                            { label: "Empreendimento", campo: "empreendimento_nome" },
+                                            { label: "Nº", campo: "numero" },
+                                            { label: "Status", campo: "status" },
+                                            { label: "Proprietário", campo: "proprietario_nome" },
+                                            { label: "% Adm", campo: "comissao_adm" },
+                                            { label: "BPO", campo: "bpo" },
+                                            { label: "Contrato", campo: "data_fechamento" },
+                                            { label: "Ativação", campo: "data_ativacao" },
+                                            { label: "Responsável", campo: "responsavel_nome" },
+                                        ].map(({ label, campo }) => (
+                                            <th
+                                                key={campo}
+                                                onClick={() => toggleOrdem(campo)}
+                                                style={{ cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}
+                                            >
+                                                {label}
+                                                <span style={{ marginLeft: 4, opacity: ordenacao === campo ? 1 : 0.3, fontSize: "0.75em" }}>
+                                                    {ordenacao === campo ? (direcao === "asc" ? "▲" : "▼") : "⇅"}
+                                                </span>
+                                            </th>
+                                        ))}
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {listaBuscada.length === 0 ? (
+                                    {listaOrdenada.length === 0 ? (
                                         <tr>
                                             <td colSpan={10} style={{ textAlign: "center", color: "var(--neutral-400)", padding: "2rem" }}>
                                                 Nenhuma unidade encontrada
@@ -505,7 +540,7 @@ export default function Unidades() {
                             <Paginacao
                                 pagina={pagina}
                                 totalPaginas={totalPaginas}
-                                total={listaBuscada.length}
+                                total={listaOrdenada.length}
                                 porPagina={POR_PAGINA}
                                 onChange={setPagina}
                             />
