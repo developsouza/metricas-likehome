@@ -114,12 +114,6 @@ export default function Login() {
                             {loading ? "Entrando..." : "Entrar na plataforma"}
                         </button>
                     </form>
-
-                    <div className="login-demo-box">
-                        <strong>Acesso de demonstração</strong>
-                        <span>admin@likehome.com / admin123</span>
-                        <span>ana@likehome.com / user123 (Marketing)</span>
-                    </div>
                 </div>
             </div>
         </div>
