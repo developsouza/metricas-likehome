@@ -4,14 +4,20 @@ const { db } = require("../database");
 // O historico_status_unidade NÃO é usado aqui porque suas datas refletem quando o registro
 // foi criado no sistema (import), não quando o evento comercial aconteceu de verdade.
 function calcularCrescimentoLiquido(competencia) {
-    // Captadas: unidades cuja data de ativação real caiu neste mês
+    // Captadas: unidades cuja data de ativação caiu neste mês
+    //           OU que estão em integração/pendentes com data de contrato neste mês mas sem data de ativação ainda
     const captadas =
         db
             .prepare(
                 `SELECT COUNT(DISTINCT id) AS n FROM unidades
-       WHERE strftime('%Y-%m', data_ativacao) = ?`,
+         WHERE strftime('%Y-%m', data_ativacao) = ?
+            OR (
+                 status IN ('Integracao', 'Ativo', 'Fechamento')
+                 AND strftime('%Y-%m', data_fechamento) = ?
+                 AND (data_ativacao IS NULL OR data_ativacao = '')
+               )`,
             )
-            .get(competencia)?.n || 0;
+            .get(competencia, competencia)?.n || 0;
 
     // Saídas: unidades com status Baixa cuja data de saída real foi neste mês
     const perdidas =
