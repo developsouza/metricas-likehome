@@ -331,6 +331,30 @@ tbody tr:last-child td {
     font-weight: 600;
     white-space: nowrap;
 }
+.btn-num {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+        opacity 0.15s,
+        transform 0.1s;
+}
+.btn-num:hover {
+    opacity: 0.8;
+    transform: scale(1.08);
+}
+.btn-num:not(.status-badge) {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f4c81;
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+}
 .status-badge::before {
     content: "";
     width: 6px;

@@ -1,10 +1,235 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ComposedChart, Bar, Line, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import api from "../../services/api";
-import { fmtValor, fmtCompetencia, competenciaAtual, labelStatus, labelDepto } from "../../utils/format";
+import { fmtValor, fmtCompetencia, fmtData, competenciaAtual, labelStatus, labelDepto } from "../../utils/format";
 import Paginacao from "../../components/Paginacao";
 
 const POR_PAGINA_EMP = 15;
+
+function ModalUnidades({ info, onClose }) {
+    const [unidades, setUnidades] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const overlayRef = useRef(null);
+
+    useEffect(() => {
+        if (!info) return;
+        setLoading(true);
+        const params = new URLSearchParams({ empreendimento_id: info.empId });
+        if (info.status) params.append("status", info.status);
+        api.get(`/unidades?${params}`)
+            .then((r) => setUnidades(r.data))
+            .finally(() => setLoading(false));
+    }, [info]);
+
+    useEffect(() => {
+        const handler = (e) => {
+            if (e.key === "Escape") onClose();
+        };
+        document.addEventListener("keydown", handler);
+        return () => document.removeEventListener("keydown", handler);
+    }, [onClose]);
+
+    if (!info) return null;
+
+    const labelCol = info.status ? labelStatus(info.status) : "Todas";
+    const cor = info.status ? CORES_STATUS[info.status] || "#888" : "#0f4c81";
+
+    return (
+        <div
+            ref={overlayRef}
+            onClick={(e) => {
+                if (e.target === overlayRef.current) onClose();
+            }}
+            style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 1000,
+                background: "rgba(0,0,0,0.45)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 24,
+            }}
+        >
+            <div
+                style={{
+                    background: "#fff",
+                    borderRadius: 12,
+                    width: "100%",
+                    maxWidth: 820,
+                    maxHeight: "85vh",
+                    display: "flex",
+                    flexDirection: "column",
+                    boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+                }}
+            >
+                {/* Header */}
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "16px 24px",
+                        borderBottom: "1px solid #e5e7eb",
+                    }}
+                >
+                    <div>
+                        <span style={{ fontWeight: 700, fontSize: 16 }}>{info.empNome}</span>
+                        <span
+                            style={{
+                                marginLeft: 10,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                background: cor + "20",
+                                color: cor,
+                                padding: "2px 10px",
+                                borderRadius: 20,
+                            }}
+                        >
+                            {labelCol}
+                        </span>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: 20,
+                            color: "#9ca3af",
+                            lineHeight: 1,
+                            padding: 4,
+                        }}
+                    >
+                        ×
+                    </button>
+                </div>
+
+                {/* Body */}
+                <div style={{ overflowY: "auto", padding: "0 24px 24px" }}>
+                    {loading ? (
+                        <div style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>Carregando...</div>
+                    ) : unidades.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>Nenhuma unidade encontrada.</div>
+                    ) : (
+                        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 16, fontSize: 13 }}>
+                            <thead>
+                                <tr style={{ background: "#f9fafb" }}>
+                                    <th
+                                        style={{
+                                            padding: "8px 10px",
+                                            textAlign: "left",
+                                            fontWeight: 600,
+                                            color: "#374151",
+                                            borderBottom: "1px solid #e5e7eb",
+                                        }}
+                                    >
+                                        Unidade
+                                    </th>
+                                    <th
+                                        style={{
+                                            padding: "8px 10px",
+                                            textAlign: "left",
+                                            fontWeight: 600,
+                                            color: "#374151",
+                                            borderBottom: "1px solid #e5e7eb",
+                                        }}
+                                    >
+                                        Proprietário
+                                    </th>
+                                    <th
+                                        style={{
+                                            padding: "8px 10px",
+                                            textAlign: "left",
+                                            fontWeight: 600,
+                                            color: "#374151",
+                                            borderBottom: "1px solid #e5e7eb",
+                                        }}
+                                    >
+                                        Responsável
+                                    </th>
+                                    <th
+                                        style={{
+                                            padding: "8px 10px",
+                                            textAlign: "left",
+                                            fontWeight: 600,
+                                            color: "#374151",
+                                            borderBottom: "1px solid #e5e7eb",
+                                        }}
+                                    >
+                                        Status
+                                    </th>
+                                    <th
+                                        style={{
+                                            padding: "8px 10px",
+                                            textAlign: "left",
+                                            fontWeight: 600,
+                                            color: "#374151",
+                                            borderBottom: "1px solid #e5e7eb",
+                                        }}
+                                    >
+                                        Contrato
+                                    </th>
+                                    <th
+                                        style={{
+                                            padding: "8px 10px",
+                                            textAlign: "left",
+                                            fontWeight: 600,
+                                            color: "#374151",
+                                            borderBottom: "1px solid #e5e7eb",
+                                        }}
+                                    >
+                                        Ativação
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {unidades.map((u, i) => (
+                                    <tr key={u.id} style={{ background: i % 2 === 0 ? "#fff" : "#f9fafb" }}>
+                                        <td style={{ padding: "7px 10px", borderBottom: "1px solid #f3f4f6", fontWeight: 600 }}>{u.numero}</td>
+                                        <td style={{ padding: "7px 10px", borderBottom: "1px solid #f3f4f6" }}>
+                                            {u.proprietario_nome || <span style={{ color: "#9ca3af" }}>—</span>}
+                                        </td>
+                                        <td style={{ padding: "7px 10px", borderBottom: "1px solid #f3f4f6" }}>
+                                            {u.responsavel_nome || <span style={{ color: "#9ca3af" }}>—</span>}
+                                        </td>
+                                        <td style={{ padding: "7px 10px", borderBottom: "1px solid #f3f4f6" }}>
+                                            <span
+                                                style={{
+                                                    background: (CORES_STATUS[u.status] || "#888") + "20",
+                                                    color: CORES_STATUS[u.status] || "#888",
+                                                    padding: "2px 8px",
+                                                    borderRadius: 20,
+                                                    fontSize: 11,
+                                                    fontWeight: 600,
+                                                }}
+                                            >
+                                                {labelStatus(u.status)}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: "7px 10px", borderBottom: "1px solid #f3f4f6", color: "#374151" }}>
+                                            {fmtData(u.data_fechamento)}
+                                        </td>
+                                        <td style={{ padding: "7px 10px", borderBottom: "1px solid #f3f4f6", color: "#374151" }}>
+                                            {fmtData(u.data_ativacao)}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+
+                {/* Footer */}
+                {!loading && unidades.length > 0 && (
+                    <div style={{ padding: "10px 24px", borderTop: "1px solid #e5e7eb", fontSize: 12, color: "#9ca3af" }}>
+                        {unidades.length} unidade{unidades.length !== 1 ? "s" : ""}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
 
 const CORES_STATUS = {
     Prospeccao: "#3b82f6",
@@ -44,6 +269,9 @@ export default function DashboardAdmin() {
     const [comp, setComp] = useState(competenciaAtual());
     const [loading, setLoading] = useState(true);
     const [paginaEmp, setPaginaEmp] = useState(1);
+    const [modalInfo, setModalInfo] = useState(null);
+
+    const abrirModal = (emp, status) => setModalInfo({ empId: emp.id, empNome: emp.nome, status: status || null });
 
     const carregar = useCallback(async () => {
         setLoading(true);
@@ -422,28 +650,43 @@ export default function DashboardAdmin() {
                                 {empsPaginados.map((e, i) => (
                                     <tr key={i}>
                                         <td style={{ fontWeight: 600 }}>{e.nome}</td>
-                                        <td style={{ textAlign: "center" }}>{e.total_unidades}</td>
                                         <td style={{ textAlign: "center" }}>
-                                            {e.ativas > 0 && <span className="status-badge s-ativo">{e.ativas}</span>}
-                                            {e.ativas === 0 && <span className="text-muted">—</span>}
+                                            <button className="btn-num" onClick={() => abrirModal(e, null)}>
+                                                {e.total_unidades}
+                                            </button>
+                                        </td>
+                                        <td style={{ textAlign: "center" }}>
+                                            {e.ativas > 0 ? (
+                                                <button className="btn-num status-badge s-ativo" onClick={() => abrirModal(e, "Ativo")}>
+                                                    {e.ativas}
+                                                </button>
+                                            ) : (
+                                                <span className="text-muted">—</span>
+                                            )}
                                         </td>
                                         <td style={{ textAlign: "center" }}>
                                             {e.integracao > 0 ? (
-                                                <span className="status-badge s-integracao">{e.integracao}</span>
+                                                <button className="btn-num status-badge s-integracao" onClick={() => abrirModal(e, "Integracao")}>
+                                                    {e.integracao}
+                                                </button>
                                             ) : (
                                                 <span className="text-muted">—</span>
                                             )}
                                         </td>
                                         <td style={{ textAlign: "center" }}>
                                             {e.fechamento > 0 ? (
-                                                <span className="status-badge s-fechamento">{e.fechamento}</span>
+                                                <button className="btn-num status-badge s-fechamento" onClick={() => abrirModal(e, "Fechamento")}>
+                                                    {e.fechamento}
+                                                </button>
                                             ) : (
                                                 <span className="text-muted">—</span>
                                             )}
                                         </td>
                                         <td style={{ textAlign: "center" }}>
                                             {e.baixas > 0 ? (
-                                                <span className="status-badge s-baixa">{e.baixas}</span>
+                                                <button className="btn-num status-badge s-baixa" onClick={() => abrirModal(e, "Baixa")}>
+                                                    {e.baixas}
+                                                </button>
                                             ) : (
                                                 <span className="text-muted">—</span>
                                             )}
@@ -462,6 +705,7 @@ export default function DashboardAdmin() {
                     </div>
                 </div>
             </div>
+            <ModalUnidades info={modalInfo} onClose={() => setModalInfo(null)} />
         </div>
     );
 }
