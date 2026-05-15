@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import api from "../../services/api";
 import { fmtData, labelStatus } from "../../utils/format";
 import Paginacao from "../../components/Paginacao";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 const POR_PAGINA = 20;
 
@@ -22,6 +25,166 @@ function classeStatus(s) {
 
 const BPO_OPTIONS = ["Proprietario", "LikeHome"];
 const PAGAMENTO_OPTIONS = ["Paga", "Não Paga"];
+
+const COLUNAS_EXPORT = [
+    { key: "empreendimento_nome", label: "Empreendimento" },
+    { key: "numero", label: "Nº" },
+    { key: "status", label: "Status", fmt: (v) => labelStatus(v) },
+    { key: "proprietario_nome", label: "Proprietário" },
+    { key: "comissao_adm", label: "% Adm", fmt: (v) => (v != null ? `${v}%` : "") },
+    { key: "bpo", label: "BPO" },
+    { key: "tipo", label: "Tipo" },
+    { key: "data_prospeccao", label: "Data Prospecção", fmt: fmtData },
+    { key: "data_reuniao", label: "Data Reunião", fmt: fmtData },
+    { key: "data_fechamento", label: "Contrato", fmt: fmtData },
+    { key: "data_integracao", label: "Data Integração", fmt: fmtData },
+    { key: "data_ativacao", label: "Ativação", fmt: fmtData },
+    { key: "data_baixa", label: "Data Baixa", fmt: fmtData },
+    { key: "responsavel_nome", label: "Responsável" },
+    { key: "taxa_enxoval", label: "Taxa Enxoval" },
+    { key: "nome_indicacao", label: "Nome Indicação" },
+    { key: "status_pagamento_indicacao", label: "Pgto. Indicação" },
+    { key: "observacoes", label: "Observações" },
+];
+
+function ModalExport({ dados, onClose }) {
+    const [selecionadas, setSelecionadas] = useState(COLUNAS_EXPORT.slice(0, 9).map((c) => c.key));
+
+    function toggleColuna(key) {
+        setSelecionadas((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+    }
+
+    function selecionarTodas() {
+        setSelecionadas(COLUNAS_EXPORT.map((c) => c.key));
+    }
+
+    function removerSelecao() {
+        setSelecionadas([]);
+    }
+
+    function getColunasSelecionadas() {
+        return COLUNAS_EXPORT.filter((c) => selecionadas.includes(c.key));
+    }
+
+    function exportarExcel() {
+        const cols = getColunasSelecionadas();
+        const header = cols.map((c) => c.label);
+        const rows = dados.map((u) =>
+            cols.map((c) => {
+                const val = u[c.key] ?? "";
+                return c.fmt ? c.fmt(val) || "" : val;
+            }),
+        );
+        const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Unidades");
+        XLSX.writeFile(wb, "unidades.xlsx");
+    }
+
+    function exportarPDF() {
+        const cols = getColunasSelecionadas();
+        const doc = new jsPDF({ orientation: "landscape" });
+        doc.setFontSize(14);
+        doc.text("Unidades", 14, 15);
+        autoTable(doc, {
+            startY: 22,
+            head: [cols.map((c) => c.label)],
+            body: dados.map((u) =>
+                cols.map((c) => {
+                    const val = u[c.key] ?? "";
+                    return c.fmt ? c.fmt(val) || "" : val;
+                }),
+            ),
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [79, 70, 229] },
+        });
+        doc.save("unidades.pdf");
+    }
+
+    return (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+            <div className="modal-box" style={{ maxWidth: 520 }}>
+                <div className="modal-title">Exportar Unidades</div>
+                <p style={{ fontSize: "0.85rem", color: "var(--neutral-500)", marginBottom: 12 }}>
+                    Selecione as colunas que deseja incluir na exportação ({dados.length} registros)
+                </p>
+
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <button className="btn btn-secondary" style={{ fontSize: "0.8rem", padding: "4px 12px" }} onClick={selecionarTodas}>
+                        Selecionar todos
+                    </button>
+                    <button className="btn btn-secondary" style={{ fontSize: "0.8rem", padding: "4px 12px" }} onClick={removerSelecao}>
+                        Remover seleção
+                    </button>
+                </div>
+
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "6px 16px",
+                        maxHeight: 300,
+                        overflowY: "auto",
+                        border: "1px solid var(--neutral-200)",
+                        borderRadius: 8,
+                        padding: "12px 16px",
+                        marginBottom: 16,
+                    }}
+                >
+                    {COLUNAS_EXPORT.map((c) => (
+                        <label key={c.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.875rem" }}>
+                            <input
+                                type="checkbox"
+                                checked={selecionadas.includes(c.key)}
+                                onChange={() => toggleColuna(c.key)}
+                                style={{ width: 15, height: 15, accentColor: "var(--primary)" }}
+                            />
+                            {c.label}
+                        </label>
+                    ))}
+                </div>
+
+                <div className="modal-actions">
+                    <button className="btn btn-secondary" onClick={onClose}>
+                        Cancelar
+                    </button>
+                    <button
+                        className="btn btn-secondary"
+                        onClick={exportarExcel}
+                        disabled={selecionadas.length === 0}
+                        style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                        <svg width={15} height={15} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                        </svg>
+                        Excel
+                    </button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={exportarPDF}
+                        disabled={selecionadas.length === 0}
+                        style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                        <svg width={15} height={15} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                            />
+                        </svg>
+                        PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 function Modal({ unidade, onClose, onSave, empreendimentos, proprietarios, usuarios }) {
     const [form, setForm] = useState(
@@ -268,6 +431,7 @@ export default function Unidades() {
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(false);
     const [editando, setEditando] = useState(null);
+    const [modalExport, setModalExport] = useState(false);
     const [filtroStatus, setFiltroStatus] = useState("");
     const [filtroEmp, setFiltroEmp] = useState("");
     const [busca, setBusca] = useState("");
@@ -358,15 +522,32 @@ export default function Unidades() {
                         {listaBuscada.length} unidade{listaBuscada.length !== 1 ? "s" : ""}
                     </p>
                 </div>
-                <button
-                    className="btn btn-primary"
-                    onClick={() => {
-                        setEditando(null);
-                        setModal(true);
-                    }}
-                >
-                    + Nova Unidade
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                        className="btn btn-secondary"
+                        onClick={() => setModalExport(true)}
+                        style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                        <svg width={15} height={15} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                            />
+                        </svg>
+                        Exportar
+                    </button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={() => {
+                            setEditando(null);
+                            setModal(true);
+                        }}
+                    >
+                        + Nova Unidade
+                    </button>
+                </div>
             </div>
 
             <div className="card" style={{ marginBottom: 16 }}>
@@ -562,6 +743,8 @@ export default function Unidades() {
                     usuarios={usuarios}
                 />
             )}
+
+            {modalExport && <ModalExport dados={listaOrdenada} onClose={() => setModalExport(false)} />}
         </div>
     );
 }
