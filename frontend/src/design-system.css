@@ -340,3 +340,141 @@ tbody tr:hover { background: color-mix(in srgb,var(--primary) 4%,var(--surface))
     .dashboard-section-heading h3 { font-size: 15px; }
     .dashboard-grid > .chart-card { padding: 14px 10px; }
 }
+
+/* Contenção responsiva: componentes largos rolam dentro de si, nunca na página */
+html,
+body,
+#root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+}
+
+.app-layout,
+.main-content,
+.page-body,
+.page-body > *,
+.card,
+.card-body,
+.chart-card,
+.dashboard-page,
+.dashboard-grid,
+.table-container,
+.kanban-board {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.main-content {
+    width: auto;
+    overflow-x: clip;
+}
+
+.page-body {
+    width: 100%;
+}
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-container > table {
+    min-width: max-content;
+}
+
+.recharts-responsive-container,
+.recharts-wrapper,
+.recharts-surface {
+    max-width: 100%;
+}
+
+.topbar > *,
+.topbar-heading {
+    min-width: 0;
+}
+
+.topbar-title {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .page-body {
+        padding-inline: 12px;
+    }
+
+    .page-header > *,
+    .page-header > * > *,
+    .filters-row > *,
+    .activity-filters .card-body > * {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .page-header > div:last-child,
+    .page-header > .flex-gap {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .page-header > div:last-child > .btn,
+    .page-header > .btn {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+    .activity-filters .card-body {
+        align-items: stretch;
+    }
+
+    .activity-filters .form-control,
+    .activity-filters label,
+    .activity-filters .btn {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .table-container {
+        margin-inline: 0;
+        padding-inline: 0;
+    }
+
+    .kanban-board {
+        width: 100%;
+    }
+
+    .notification-dropdown {
+        position: fixed;
+        top: calc(var(--header-h) - 2px);
+        right: 8px;
+        left: 8px;
+        width: auto;
+        max-width: none;
+    }
+
+    .modal-box,
+    .activity-modal {
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 380px) {
+    .topbar {
+        gap: 8px;
+    }
+
+    .topbar-right {
+        gap: 5px;
+        flex-shrink: 0;
+    }
+
+    .topbar-title {
+        max-width: 118px;
+    }
+}
