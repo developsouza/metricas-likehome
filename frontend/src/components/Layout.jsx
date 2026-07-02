@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import { useLocation } from "react-router-dom";
+import NotificationBell from "./Notificacoes/NotificationBell";
 
 const titles = {
     "/dashboard": "Dashboard",
@@ -11,6 +12,7 @@ const titles = {
     "/lancamentos": "Lançamento de Indicadores",
     "/indicadores": "Indicadores",
     "/usuarios": "Usuários",
+    "/analise-gestao": "Análise / Gestão",
 };
 
 export default function Layout({ children }) {
@@ -34,6 +36,7 @@ export default function Layout({ children }) {
                         <span className="topbar-title">{title}</span>
                     </div>
                     <div className="topbar-right">
+                        <NotificationBell />
                         <span className="topbar-date">
                             {new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                         </span>

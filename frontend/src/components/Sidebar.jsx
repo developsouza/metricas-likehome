@@ -99,6 +99,7 @@ export default function Sidebar({ isOpen, onClose }) {
     const navigate = useNavigate();
     const location = useLocation();
     const isAdmin = usuario?.perfil === "admin";
+    const isGestao = usuario?.perfil === "analise_gestao";
 
     function go(path) {
         navigate(path);
@@ -116,7 +117,17 @@ export default function Sidebar({ isOpen, onClose }) {
             </div>
 
             <nav className="sidebar-nav">
-                {isAdmin ? (
+                {isGestao ? (
+                    <>
+                        <div className="nav-section">Análise / Gestão</div>
+                        <button className={`nav-item ${isActive("/bi") ? "active" : ""}`} onClick={() => go("/bi")}>
+                            <IconBI /> Análise BI
+                        </button>
+                        <button className={`nav-item ${isActive("/analise-gestao") ? "active" : ""}`} onClick={() => go("/analise-gestao")}>
+                            <IconPipeline /> Acompanhamento de Setores
+                        </button>
+                    </>
+                ) : isAdmin ? (
                     <>
                         <div className="nav-section">Visão Geral</div>
                         <button className={`nav-item ${isActive("/dashboard") ? "active" : ""}`} onClick={() => go("/dashboard")}>
@@ -124,6 +135,9 @@ export default function Sidebar({ isOpen, onClose }) {
                         </button>
                         <button className={`nav-item ${isActive("/bi") ? "active" : ""}`} onClick={() => go("/bi")}>
                             <IconBI /> Análise BI
+                        </button>
+                        <button className={`nav-item ${isActive("/analise-gestao") ? "active" : ""}`} onClick={() => go("/analise-gestao")}>
+                            <IconPipeline /> Acompanhamento de Setores
                         </button>
 
                         <div className="nav-section">Operacional</div>
@@ -164,6 +178,9 @@ export default function Sidebar({ isOpen, onClose }) {
                         </button>
                         <button className={`nav-item ${isActive("/lancamentos") ? "active" : ""}`} onClick={() => go("/lancamentos")}>
                             <IconKpi /> Lançar Indicadores
+                        </button>
+                        <button className={`nav-item ${isActive("/analise-gestao") ? "active" : ""}`} onClick={() => go("/analise-gestao")}>
+                            <IconPipeline /> Atividades do Setor
                         </button>
                         <div className="nav-section">Consulta</div>
                         <button className={`nav-item ${isActive("/pipeline") ? "active" : ""}`} onClick={() => go("/pipeline")}>

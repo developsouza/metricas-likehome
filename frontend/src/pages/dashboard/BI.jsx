@@ -20,10 +20,10 @@ import {
     PolarAngleAxis,
 } from "recharts";
 import api from "../../services/api";
-import { fmtValor, fmtCompetencia, labelDepto } from "../../utils/format";
+import { fmtValor, fmtCompetencia, labelDepto, deptos } from "../../utils/format";
 import Paginacao from "../../components/Paginacao";
 
-const DEPTOS = ["Marketing", "Comercial", "Atendimento", "Precificacao", "Financeiro"];
+const DEPTOS = deptos();
 const CORES_DEPTO = ["#0f4c81", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"];
 const CORES_PIE = ["#0f4c81", "#22c55e", "#f97316", "#8b5cf6", "#ef4444", "#eab308", "#10b981", "#9ca3af"];
 

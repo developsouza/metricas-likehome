@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const { authMiddleware, adminMiddleware } = require("../middlewares/auth");
+const { authMiddleware, adminMiddleware, rolesMiddleware } = require("../middlewares/auth");
 const auth = require("../controllers/authController");
 const usuarios = require("../controllers/usuariosController");
 const empreendimentos = require("../controllers/empreendimentosController");
@@ -11,6 +11,8 @@ const indicadores = require("../controllers/indicadoresController");
 const lancamentos = require("../controllers/lancamentosController");
 const dashboard = require("../controllers/dashboardController");
 const importCtrl = require("../controllers/importController");
+const atividades = require("../controllers/atividadesController");
+const notificacoes = require("../controllers/notificacoesController");
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -28,10 +30,24 @@ const upload = multer({
 router.post("/auth/login", auth.login);
 router.get("/auth/me", authMiddleware, auth.me);
 
+// Análise / Gestão
+router.get("/atividades/responsaveis", authMiddleware, atividades.responsaveis);
+router.get("/atividades", authMiddleware, atividades.listar);
+router.get("/atividades/:id", authMiddleware, atividades.buscar);
+router.post("/atividades", authMiddleware, atividades.criar);
+router.put("/atividades/:id", authMiddleware, atividades.atualizar);
+router.delete("/atividades/:id", authMiddleware, atividades.remover);
+router.get("/atividades/:id/comentarios", authMiddleware, atividades.comentarios);
+router.post("/atividades/:id/comentarios", authMiddleware, atividades.comentar);
+router.get("/atividades/:id/historico", authMiddleware, atividades.historico);
+router.get("/notificacoes", authMiddleware, notificacoes.listar);
+router.put("/notificacoes/marcar-todas-lidas", authMiddleware, notificacoes.marcarTodas);
+router.put("/notificacoes/:id/lida", authMiddleware, notificacoes.marcarLida);
+
 // Dashboard
 router.get("/dashboard/admin", authMiddleware, adminMiddleware, dashboard.dashboardAdmin);
 router.get("/dashboard/departamento/:depto", authMiddleware, dashboard.dashboardDepartamento);
-router.get("/dashboard/bi", authMiddleware, adminMiddleware, dashboard.bi);
+router.get("/dashboard/bi", authMiddleware, rolesMiddleware("admin", "analise_gestao"), dashboard.bi);
 
 // Usuários (admin)
 router.get("/usuarios", authMiddleware, adminMiddleware, usuarios.listar);

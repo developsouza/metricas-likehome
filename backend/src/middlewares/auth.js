@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { db } = require('../database');
 
 function authMiddleware(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -10,10 +11,12 @@ function authMiddleware(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    const user = db.prepare('SELECT id,nome,email,perfil,departamento FROM usuarios WHERE id=? AND ativo=1').get(decoded.id);
+    if (!user) return res.status(401).json({ error: 'Usuário inativo ou inexistente' });
+    req.user = user;
     next();
   } catch (err) {
-    return res.status(403).json({ error: 'Token inválido ou expirado' });
+    return res.status(401).json({ error: 'Token inválido ou expirado' });
   }
 }
 
@@ -24,4 +27,11 @@ function adminMiddleware(req, res, next) {
   next();
 }
 
-module.exports = { authMiddleware, adminMiddleware };
+function rolesMiddleware(...perfis) {
+  return (req, res, next) => {
+    if (!perfis.includes(req.user.perfil)) return res.status(403).json({ error: 'Sem permissão para este recurso' });
+    next();
+  };
+}
+
+module.exports = { authMiddleware, adminMiddleware, rolesMiddleware };

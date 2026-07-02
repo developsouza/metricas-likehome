@@ -13,8 +13,9 @@ import Usuarios from "./pages/admin/Usuarios";
 import Unidades from "./pages/admin/Unidades";
 import Proprietarios from "./pages/admin/Proprietarios";
 import Importacao from "./pages/importacao/Importacao";
+import AcompanhamentoSetores from "./pages/AnaliseGestao/AcompanhamentoSetores";
 
-function PrivateRoute({ children, adminOnly = false }) {
+function PrivateRoute({ children, adminOnly = false, roles }) {
     const { usuario, loading } = useAuth();
     if (loading)
         return (
@@ -22,11 +23,13 @@ function PrivateRoute({ children, adminOnly = false }) {
         );
     if (!usuario) return <Navigate to="/login" replace />;
     if (adminOnly && usuario.perfil !== "admin") return <Navigate to="/dashboard" replace />;
+    if (roles && !roles.includes(usuario.perfil)) return <Navigate to="/dashboard" replace />;
     return children;
 }
 
 function DashboardRoute() {
     const { usuario } = useAuth();
+    if (usuario?.perfil === "analise_gestao") return <Navigate to="/bi" replace />;
     return usuario?.perfil === "admin" ? <DashboardAdmin /> : <DashboardDepto />;
 }
 
@@ -49,13 +52,14 @@ function AppRoutes() {
             <Route
                 path="/bi"
                 element={
-                    <PrivateRoute adminOnly>
+                    <PrivateRoute roles={["admin", "analise_gestao"]}>
                         <Layout>
                             <BI />
                         </Layout>
                     </PrivateRoute>
                 }
             />
+            <Route path="/analise-gestao" element={<PrivateRoute><Layout><AcompanhamentoSetores /></Layout></PrivateRoute>} />
             <Route
                 path="/pipeline"
                 element={

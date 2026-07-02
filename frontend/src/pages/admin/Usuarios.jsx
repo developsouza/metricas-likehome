@@ -35,6 +35,7 @@ function Modal({ user, onClose, onSave }) {
             <label className="form-label">Perfil</label>
             <select className="form-control" value={form.perfil} onChange={e => h('perfil', e.target.value)}>
               <option value="usuario">Usuário</option>
+              <option value="analise_gestao">Análise / Gestão</option>
               <option value="admin">Administrador</option>
             </select>
           </div>
@@ -101,7 +102,7 @@ export default function Usuarios() {
                     <tr key={u.id} style={{ opacity: u.ativo ? 1 : 0.5 }}>
                       <td style={{ fontWeight: 600 }}>{u.nome}</td>
                       <td className="text-muted">{u.email}</td>
-                      <td><span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: u.perfil === 'admin' ? '#eff6ff' : 'var(--neutral-100)', color: u.perfil === 'admin' ? '#2563eb' : 'var(--neutral-600)' }}>{u.perfil === 'admin' ? '⭐ Admin' : 'Usuário'}</span></td>
+                      <td><span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: u.perfil === 'admin' ? '#eff6ff' : 'var(--neutral-100)', color: u.perfil === 'admin' ? '#2563eb' : 'var(--neutral-600)' }}>{u.perfil === 'admin' ? '⭐ Admin' : u.perfil === 'analise_gestao' ? 'Análise / Gestão' : 'Usuário'}</span></td>
                       <td className="text-muted">{labelDepto(u.departamento) || '—'}</td>
                       <td><span className={`status-badge ${u.ativo ? 's-ativo' : 's-baixa'}`}>{u.ativo ? 'Ativo' : 'Inativo'}</span></td>
                       <td>
