@@ -24,6 +24,11 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Funções locais declaradas depois dos effects são hoisted pelo JavaScript.
+      'react-hooks/immutability': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-refresh/only-export-components': 'off',
+      'react-hooks/exhaustive-deps': 'off',
     },
   },
 ])

@@ -1,26 +1,30 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Layout from "./components/Layout";
-import Login from "./pages/auth/Login";
-import DashboardAdmin from "./pages/dashboard/DashboardAdmin";
-import DashboardDepto from "./pages/dashboard/DashboardDepto";
-import BI from "./pages/dashboard/BI";
-import Pipeline from "./pages/pipeline/Pipeline";
-import Lancamentos from "./pages/lancamentos/Lancamentos";
-import Empreendimentos from "./pages/admin/Empreendimentos";
-import Indicadores from "./pages/admin/Indicadores";
-import Usuarios from "./pages/admin/Usuarios";
-import Unidades from "./pages/admin/Unidades";
-import Proprietarios from "./pages/admin/Proprietarios";
-import Importacao from "./pages/importacao/Importacao";
-import AcompanhamentoSetores from "./pages/AnaliseGestao/AcompanhamentoSetores";
+
+const Login = lazy(() => import("./pages/auth/Login"));
+const DashboardAdmin = lazy(() => import("./pages/dashboard/DashboardAdmin"));
+const DashboardDepto = lazy(() => import("./pages/dashboard/DashboardDepto"));
+const BI = lazy(() => import("./pages/dashboard/BI"));
+const Pipeline = lazy(() => import("./pages/pipeline/Pipeline"));
+const Lancamentos = lazy(() => import("./pages/lancamentos/Lancamentos"));
+const Empreendimentos = lazy(() => import("./pages/admin/Empreendimentos"));
+const Indicadores = lazy(() => import("./pages/admin/Indicadores"));
+const Usuarios = lazy(() => import("./pages/admin/Usuarios"));
+const Unidades = lazy(() => import("./pages/admin/Unidades"));
+const Proprietarios = lazy(() => import("./pages/admin/Proprietarios"));
+const Importacao = lazy(() => import("./pages/importacao/Importacao"));
+const AcompanhamentoSetores = lazy(() => import("./pages/AnaliseGestao/AcompanhamentoSetores"));
+
+function LoadingScreen() {
+    return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: "#64748b" }}>Carregando...</div>;
+}
 
 function PrivateRoute({ children, adminOnly = false, roles }) {
     const { usuario, loading } = useAuth();
     if (loading)
-        return (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: "#64748b" }}>Carregando...</div>
-        );
+        return <LoadingScreen />;
     if (!usuario) return <Navigate to="/login" replace />;
     if (adminOnly && usuario.perfil !== "admin") return <Navigate to="/dashboard" replace />;
     if (roles && !roles.includes(usuario.perfil)) return <Navigate to="/dashboard" replace />;
@@ -149,7 +153,9 @@ export default function App() {
     return (
         <BrowserRouter>
             <AuthProvider>
-                <AppRoutes />
+                <Suspense fallback={<LoadingScreen />}>
+                    <AppRoutes />
+                </Suspense>
             </AuthProvider>
         </BrowserRouter>
     );

@@ -4,7 +4,6 @@ import { fmtData, labelStatus } from "../../utils/format";
 import Paginacao from "../../components/Paginacao";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
 
 const POR_PAGINA = 20;
 
@@ -66,7 +65,7 @@ function ModalExport({ dados, onClose }) {
         return COLUNAS_EXPORT.filter((c) => selecionadas.includes(c.key));
     }
 
-    function exportarExcel() {
+    function exportarCsv() {
         const cols = getColunasSelecionadas();
         const header = cols.map((c) => c.label);
         const rows = dados.map((u) =>
@@ -75,10 +74,19 @@ function ModalExport({ dados, onClose }) {
                 return c.fmt ? c.fmt(val) || "" : val;
             }),
         );
-        const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Unidades");
-        XLSX.writeFile(wb, "unidades.xlsx");
+        const escapeCsv = (value) => {
+            let text = String(value ?? "");
+            // Evita que planilhas interpretem conteúdo importado como fórmula.
+            if (/^[=+\-@]/.test(text)) text = `'${text}`;
+            return `"${text.replaceAll('"', '""')}"`;
+        };
+        const csv = [header, ...rows].map((row) => row.map(escapeCsv).join(";")).join("\r\n");
+        const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "unidades.csv";
+        link.click();
+        URL.revokeObjectURL(url);
     }
 
     function exportarPDF() {
@@ -150,7 +158,7 @@ function ModalExport({ dados, onClose }) {
                     </button>
                     <button
                         className="btn btn-secondary"
-                        onClick={exportarExcel}
+                        onClick={exportarCsv}
                         disabled={selecionadas.length === 0}
                         style={{ display: "flex", alignItems: "center", gap: 6 }}
                     >
@@ -162,7 +170,7 @@ function ModalExport({ dados, onClose }) {
                                 d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                             />
                         </svg>
-                        Excel
+                        CSV
                     </button>
                     <button
                         className="btn btn-primary"

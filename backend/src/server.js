@@ -1,14 +1,14 @@
-require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const path = require("path");
 const { initDatabase } = require("./database");
 const routes = require("./routes");
+const { notFound, errorHandler } = require("./middlewares/errors");
+const { isProduction, port, allowedOrigins } = require("./config");
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-const isProduction = process.env.NODE_ENV === "production";
+app.disable("x-powered-by");
 
 // Cabeçalhos de segurança
 app.use(
@@ -20,11 +20,16 @@ app.use(
 
 // CORS — em produção restringe ao domínio configurado
 const corsOptions = {
-    origin: isProduction ? process.env.ALLOWED_ORIGIN || false : "*",
-    credentials: true,
+    origin(origin, callback) {
+        if (!isProduction || !origin || allowedOrigins.includes(origin)) return callback(null, true);
+        const error = new Error("Origem não permitida pelo CORS");
+        error.status = 403;
+        callback(error);
+    },
+    credentials: false,
 };
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 // Inicializa banco
 initDatabase();
@@ -44,6 +49,18 @@ if (isProduction) {
     });
 }
 
-app.listen(PORT, () => {
-    console.log(`🚀 Métricas LikeHome API rodando na porta ${PORT} [${process.env.NODE_ENV || "development"}]`);
+app.use(notFound);
+app.use(errorHandler);
+
+const server = app.listen(port, () => {
+    console.log(`🚀 Métricas LikeHome API rodando na porta ${port} [${process.env.NODE_ENV || "development"}]`);
 });
+
+function shutdown(signal) {
+    console.log(`${signal} recebido; encerrando conexões.`);
+    server.close(() => process.exit(0));
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
+module.exports = { app, server };

@@ -1,12 +1,14 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { db } = require('../database');
+const { jwtSecret, jwtExpiresIn } = require('../config');
 
 function login(req, res) {
-  const { email, senha } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
+  const { senha } = req.body;
   if (!email || !senha) return res.status(400).json({ error: 'Email e senha são obrigatórios' });
 
-  const user = db.prepare('SELECT * FROM usuarios WHERE email = ? AND ativo = 1').get(email);
+  const user = db.prepare('SELECT id,nome,email,senha_hash,perfil,departamento FROM usuarios WHERE lower(email) = ? AND ativo = 1').get(email);
   if (!user) return res.status(401).json({ error: 'Credenciais inválidas' });
 
   const ok = bcrypt.compareSync(senha, user.senha_hash);
@@ -14,8 +16,8 @@ function login(req, res) {
 
   const token = jwt.sign(
     { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil, departamento: user.departamento },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN }
+    jwtSecret,
+    { expiresIn: jwtExpiresIn, algorithm: 'HS256' }
   );
 
   res.json({

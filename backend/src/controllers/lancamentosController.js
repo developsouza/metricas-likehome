@@ -23,6 +23,8 @@ function criar(req, res) {
   if (!indicador_id || !competencia || valor_realizado === undefined) {
     return res.status(400).json({ error: 'Indicador, competência e valor são obrigatórios' });
   }
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(competencia)) return res.status(400).json({ error: 'Competência inválida; use AAAA-MM' });
+  if (!Number.isFinite(Number(valor_realizado)) || (meta != null && meta !== '' && !Number.isFinite(Number(meta)))) return res.status(400).json({ error: 'Valor realizado ou meta inválido' });
 
   // Verifica se já existe lançamento para este indicador/competência
   const existe = db.prepare('SELECT id FROM lancamentos_indicadores WHERE indicador_id = ? AND competencia = ?').get(indicador_id, competencia);
@@ -33,7 +35,7 @@ function criar(req, res) {
   const result = db.prepare(`
     INSERT INTO lancamentos_indicadores (indicador_id, competencia, valor_realizado, meta, observacao, usuario_id)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(indicador_id, competencia, valor_realizado, meta || null, observacao || null, req.user.id);
+  `).run(indicador_id, competencia, Number(valor_realizado), meta === '' || meta == null ? null : Number(meta), observacao?.trim() || null, req.user.id);
 
   res.status(201).json({ id: result.lastInsertRowid });
 }
@@ -42,6 +44,8 @@ function atualizar(req, res) {
   const { valor_realizado, meta, observacao } = req.body;
   const lanc = db.prepare('SELECT * FROM lancamentos_indicadores WHERE id = ?').get(req.params.id);
   if (!lanc) return res.status(404).json({ error: 'Lançamento não encontrado' });
+  if (valor_realizado !== undefined && !Number.isFinite(Number(valor_realizado))) return res.status(400).json({ error: 'Valor realizado inválido' });
+  if (meta !== undefined && meta !== null && meta !== '' && !Number.isFinite(Number(meta))) return res.status(400).json({ error: 'Meta inválida' });
 
   // Usuário comum só pode editar seus próprios lançamentos
   if (req.user.perfil !== 'admin' && lanc.usuario_id !== req.user.id) {
@@ -49,7 +53,7 @@ function atualizar(req, res) {
   }
 
   db.prepare('UPDATE lancamentos_indicadores SET valor_realizado=?, meta=?, observacao=? WHERE id=?')
-    .run(valor_realizado ?? lanc.valor_realizado, meta ?? lanc.meta, observacao ?? lanc.observacao, req.params.id);
+    .run(valor_realizado === undefined ? lanc.valor_realizado : Number(valor_realizado), meta === '' ? null : (meta ?? lanc.meta), observacao ?? lanc.observacao, req.params.id);
   res.json({ message: 'Lançamento atualizado' });
 }
 
@@ -62,7 +66,7 @@ function remover(req, res) {
 function historico(req, res) {
   const { indicador_id, meses } = req.query;
   if (!indicador_id) return res.status(400).json({ error: 'indicador_id obrigatório' });
-  const limit = parseInt(meses) || 12;
+  const limit = Math.min(Math.max(parseInt(meses, 10) || 12, 1), 120);
   const rows = db.prepare(`
     SELECT competencia, valor_realizado, meta FROM lancamentos_indicadores
     WHERE indicador_id = ? ORDER BY competencia DESC LIMIT ?

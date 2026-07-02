@@ -21,8 +21,11 @@ function buscar(req, res) {
 }
 
 function criar(req, res) {
-  const { nome, email, senha, perfil, departamento } = req.body;
+  let { nome, email, senha, perfil, departamento } = req.body;
+  nome = nome?.trim();
+  email = email?.trim().toLowerCase();
   if (!nome || !email || !senha) return res.status(400).json({ error: 'Nome, email e senha são obrigatórios' });
+  if (senha.length < 8) return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres' });
 
   const existe = db.prepare('SELECT id FROM usuarios WHERE email = ?').get(email);
   if (existe) return res.status(409).json({ error: 'Email já cadastrado' });
@@ -40,9 +43,16 @@ function criar(req, res) {
 }
 
 function atualizar(req, res) {
-  const { nome, email, perfil, departamento, ativo, senha } = req.body;
+  let { nome, email, perfil, departamento, ativo, senha } = req.body;
+  nome = nome?.trim();
+  email = email?.trim().toLowerCase();
   const user = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (senha && senha.length < 8) return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres' });
+  if (email) {
+    const existe = db.prepare('SELECT id FROM usuarios WHERE lower(email)=? AND id<>?').get(email, req.params.id);
+    if (existe) return res.status(409).json({ error: 'Email já cadastrado' });
+  }
 
   const perfilFinal = perfil || user.perfil;
   const departamentoFinal = departamento === '' ? null : (departamento ?? user.departamento);
@@ -59,6 +69,7 @@ function atualizar(req, res) {
 }
 
 function remover(req, res) {
+  if (Number(req.params.id) === req.user.id) return res.status(409).json({ error: 'Você não pode desativar o próprio usuário' });
   db.prepare('UPDATE usuarios SET ativo = 0 WHERE id = ?').run(req.params.id);
   res.json({ message: 'Usuário desativado' });
 }

@@ -10,7 +10,7 @@ Sistema de gestão e acompanhamento de indicadores estratégicos (KRIs/KPIs) par
 |------------|-------------------------|
 | Back-end   | Node.js + Express       |
 | Front-end  | React (Vite)            |
-| Banco      | SQLite (better-sqlite3) |
+| Banco      | SQLite (`node:sqlite`)  |
 | Auth       | JWT                     |
 | Gráficos   | Recharts                |
 
@@ -51,7 +51,7 @@ metricas-likehome/
 ## ⚙️ Instalação e Execução
 
 ### Pré-requisitos
-- Node.js 18+
+- Node.js 22.5+
 - npm
 
 ### 1. Backend
@@ -62,10 +62,8 @@ cd backend
 # Instalar dependências
 npm install
 
-# ⚠️ Se better-sqlite3 falhar no build (headers ausentes):
-cd node_modules/better-sqlite3
-node-gyp rebuild --nodedir=/usr
-cd ../..
+# Copiar e ajustar as variáveis de ambiente
+cp .env.example .env
 
 # Criar banco e seed de demonstração
 node src/seed.js

@@ -3,6 +3,9 @@
     "version": "1.0.0",
     "description": "Backend - Métricas LikeHome",
     "main": "src/server.js",
+    "engines": {
+        "node": ">=22.5.0"
+    },
     "scripts": {
         "start": "node --disable-warning=ExperimentalWarning src/server.js",
         "dev": "nodemon --exec \"node --disable-warning=ExperimentalWarning\" src/server.js",

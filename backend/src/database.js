@@ -7,6 +7,7 @@ const db = new DatabaseSync(path.resolve(dbPath));
 
 db.exec("PRAGMA journal_mode = WAL");
 db.exec("PRAGMA foreign_keys = ON");
+db.exec("PRAGMA busy_timeout = 5000");
 
 function initDatabase() {
     migrateUsuariosPerfil();
@@ -166,6 +167,8 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_comentarios_atividade ON atividades_comentarios(atividade_id);
     CREATE INDEX IF NOT EXISTS idx_historico_atividade ON atividades_historico(atividade_id);
     CREATE INDEX IF NOT EXISTS idx_notificacoes_usuario_lida ON notificacoes(usuario_id, lida, criado_em);
+    CREATE INDEX IF NOT EXISTS idx_unidades_filtros ON unidades(status, empreendimento_id, responsavel_id);
+    CREATE INDEX IF NOT EXISTS idx_lancamentos_competencia ON lancamentos_indicadores(competencia, indicador_id);
   `);
 }
 

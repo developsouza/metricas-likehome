@@ -1,16 +1,18 @@
 const jwt = require('jsonwebtoken');
 const { db } = require('../database');
+const { jwtSecret } = require('../config');
 
 function authMiddleware(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const authHeader = req.headers.authorization;
+  const match = typeof authHeader === 'string' && authHeader.match(/^Bearer\s+(\S+)$/i);
+  const token = match && match[1];
 
   if (!token) {
     return res.status(401).json({ error: 'Token não fornecido' });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });
     const user = db.prepare('SELECT id,nome,email,perfil,departamento FROM usuarios WHERE id=? AND ativo=1').get(decoded.id);
     if (!user) return res.status(401).json({ error: 'Usuário inativo ou inexistente' });
     req.user = user;
