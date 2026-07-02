@@ -385,12 +385,6 @@ body,
     min-width: max-content;
 }
 
-.recharts-responsive-container,
-.recharts-wrapper,
-.recharts-surface {
-    max-width: 100%;
-}
-
 .topbar > *,
 .topbar-heading {
     min-width: 0;
