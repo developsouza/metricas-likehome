@@ -53,7 +53,9 @@ function ModalUnidades({ info, onClose }) {
         >
             <div
                 style={{
-                    background: "#fff",
+                    background: "var(--surface)",
+                    color: "var(--text)",
+                    border: "1px solid var(--border)",
                     borderRadius: 12,
                     width: "100%",
                     maxWidth: 820,
@@ -70,7 +72,7 @@ function ModalUnidades({ info, onClose }) {
                         alignItems: "center",
                         justifyContent: "space-between",
                         padding: "16px 24px",
-                        borderBottom: "1px solid #e5e7eb",
+                        borderBottom: "1px solid var(--border)",
                     }}
                 >
                     <div>
@@ -114,14 +116,14 @@ function ModalUnidades({ info, onClose }) {
                     ) : (
                         <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 16, fontSize: 13 }}>
                             <thead>
-                                <tr style={{ background: "#f9fafb" }}>
+                                <tr style={{ background: "var(--neutral-50)" }}>
                                     <th
                                         style={{
                                             padding: "8px 10px",
                                             textAlign: "left",
                                             fontWeight: 600,
-                                            color: "#374151",
-                                            borderBottom: "1px solid #e5e7eb",
+                                            color: "var(--text-muted)",
+                                            borderBottom: "1px solid var(--border)",
                                         }}
                                     >
                                         Unidade
@@ -131,8 +133,8 @@ function ModalUnidades({ info, onClose }) {
                                             padding: "8px 10px",
                                             textAlign: "left",
                                             fontWeight: 600,
-                                            color: "#374151",
-                                            borderBottom: "1px solid #e5e7eb",
+                                            color: "var(--text-muted)",
+                                            borderBottom: "1px solid var(--border)",
                                         }}
                                     >
                                         Proprietário
@@ -142,8 +144,8 @@ function ModalUnidades({ info, onClose }) {
                                             padding: "8px 10px",
                                             textAlign: "left",
                                             fontWeight: 600,
-                                            color: "#374151",
-                                            borderBottom: "1px solid #e5e7eb",
+                                            color: "var(--text-muted)",
+                                            borderBottom: "1px solid var(--border)",
                                         }}
                                     >
                                         Responsável
@@ -153,8 +155,8 @@ function ModalUnidades({ info, onClose }) {
                                             padding: "8px 10px",
                                             textAlign: "left",
                                             fontWeight: 600,
-                                            color: "#374151",
-                                            borderBottom: "1px solid #e5e7eb",
+                                            color: "var(--text-muted)",
+                                            borderBottom: "1px solid var(--border)",
                                         }}
                                     >
                                         Status
@@ -164,8 +166,8 @@ function ModalUnidades({ info, onClose }) {
                                             padding: "8px 10px",
                                             textAlign: "left",
                                             fontWeight: 600,
-                                            color: "#374151",
-                                            borderBottom: "1px solid #e5e7eb",
+                                            color: "var(--text-muted)",
+                                            borderBottom: "1px solid var(--border)",
                                         }}
                                     >
                                         Contrato
@@ -175,8 +177,8 @@ function ModalUnidades({ info, onClose }) {
                                             padding: "8px 10px",
                                             textAlign: "left",
                                             fontWeight: 600,
-                                            color: "#374151",
-                                            borderBottom: "1px solid #e5e7eb",
+                                            color: "var(--text-muted)",
+                                            borderBottom: "1px solid var(--border)",
                                         }}
                                     >
                                         Ativação
@@ -185,7 +187,7 @@ function ModalUnidades({ info, onClose }) {
                             </thead>
                             <tbody>
                                 {unidades.map((u, i) => (
-                                    <tr key={u.id} style={{ background: i % 2 === 0 ? "#fff" : "#f9fafb" }}>
+                                    <tr key={u.id} style={{ background: i % 2 === 0 ? "var(--surface)" : "var(--neutral-50)" }}>
                                         <td style={{ padding: "7px 10px", borderBottom: "1px solid #f3f4f6", fontWeight: 600 }}>{u.numero}</td>
                                         <td style={{ padding: "7px 10px", borderBottom: "1px solid #f3f4f6" }}>
                                             {u.proprietario_nome || <span style={{ color: "#9ca3af" }}>—</span>}
@@ -207,10 +209,10 @@ function ModalUnidades({ info, onClose }) {
                                                 {labelStatus(u.status)}
                                             </span>
                                         </td>
-                                        <td style={{ padding: "7px 10px", borderBottom: "1px solid #f3f4f6", color: "#374151" }}>
+                                        <td style={{ padding: "7px 10px", borderBottom: "1px solid var(--border)", color: "var(--text-muted)" }}>
                                             {fmtData(u.data_fechamento)}
                                         </td>
-                                        <td style={{ padding: "7px 10px", borderBottom: "1px solid #f3f4f6", color: "#374151" }}>
+                                        <td style={{ padding: "7px 10px", borderBottom: "1px solid var(--border)", color: "var(--text-muted)" }}>
                                             {fmtData(u.data_ativacao)}
                                         </td>
                                     </tr>
@@ -222,7 +224,7 @@ function ModalUnidades({ info, onClose }) {
 
                 {/* Footer */}
                 {!loading && unidades.length > 0 && (
-                    <div style={{ padding: "10px 24px", borderTop: "1px solid #e5e7eb", fontSize: 12, color: "#9ca3af" }}>
+                    <div style={{ padding: "10px 24px", borderTop: "1px solid var(--border)", fontSize: 12, color: "var(--text-muted)" }}>
                         {unidades.length} unidade{unidades.length !== 1 ? "s" : ""}
                     </div>
                 )}
