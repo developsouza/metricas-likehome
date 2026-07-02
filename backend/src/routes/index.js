@@ -36,7 +36,7 @@ router.get("/atividades", authMiddleware, atividades.listar);
 router.get("/atividades/:id", authMiddleware, atividades.buscar);
 router.post("/atividades", authMiddleware, atividades.criar);
 router.put("/atividades/:id", authMiddleware, atividades.atualizar);
-router.delete("/atividades/:id", authMiddleware, atividades.remover);
+router.delete("/atividades/:id", authMiddleware, adminMiddleware, atividades.remover);
 router.get("/atividades/:id/comentarios", authMiddleware, atividades.comentarios);
 router.post("/atividades/:id/comentarios", authMiddleware, atividades.comentar);
 router.get("/atividades/:id/historico", authMiddleware, atividades.historico);

@@ -266,6 +266,16 @@ tbody tr:hover { background: color-mix(in srgb,var(--primary) 4%,var(--surface))
 :root[data-theme="dark"] .modal-overlay { background: rgba(0,0,0,.72); }
 :root[data-theme="dark"] .modal-box,
 :root[data-theme="dark"] .activity-modal { box-shadow: 0 28px 80px rgba(0,0,0,.5); }
+.activity-modal-actions { justify-content: space-between; align-items: center; }
+.activity-modal-actions-main { display: flex; gap: 10px; margin-left: auto; }
+.btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); box-shadow: 0 4px 12px rgba(220,38,38,.18); }
+.btn-danger:hover:not(:disabled) { background: #b91c1c; border-color: #b91c1c; }
+.btn:disabled { opacity: .58; cursor: not-allowed; }
+@media (max-width: 640px) {
+    .activity-modal-actions { align-items: stretch; }
+    .activity-modal-actions-main { display: flex; flex-direction: column-reverse; width: 100%; margin: 0; gap: 8px; }
+    .activity-delete { order: 2; margin-top: 4px; }
+}
 @media (max-width: 820px) {
     .dashboard-section-heading { align-items: flex-start; }
     .dashboard-section-heading p { display: none; }
