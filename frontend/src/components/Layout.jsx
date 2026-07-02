@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import { useLocation } from "react-router-dom";
 import NotificationBell from "./Notificacoes/NotificationBell";
+import { useAuth } from "../contexts/AuthContext";
 
 const titles = {
     "/dashboard": "Dashboard",
@@ -17,8 +18,15 @@ const titles = {
 
 export default function Layout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [theme, setTheme] = useState(() => localStorage.getItem("lh-theme") || "light");
     const location = useLocation();
+    const { usuario } = useAuth();
     const title = Object.entries(titles).find(([k]) => location.pathname.startsWith(k))?.[1] || "Métricas LikeHome";
+
+    useEffect(() => {
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem("lh-theme", theme);
+    }, [theme]);
 
     return (
         <div className="app-layout">
@@ -33,13 +41,22 @@ export default function Layout({ children }) {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </button>
-                        <span className="topbar-title">{title}</span>
+                        <div className="topbar-heading">
+                            <span className="topbar-eyebrow">Workspace</span>
+                            <span className="topbar-title">{title}</span>
+                        </div>
                     </div>
                     <div className="topbar-right">
-                        <NotificationBell />
                         <span className="topbar-date">
                             {new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                         </span>
+                        <button className="icon-button theme-toggle" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label={`Ativar tema ${theme === "dark" ? "claro" : "escuro"}`} title="Alternar tema">
+                            {theme === "dark" ? "☀" : "☾"}
+                        </button>
+                        <NotificationBell />
+                        <div className="topbar-profile" title={usuario?.nome}>
+                            <span>{usuario?.nome?.split(" ").slice(0, 2).map((n) => n[0]).join("") || "LH"}</span>
+                        </div>
                     </div>
                 </header>
                 <div className="page-body">{children}</div>

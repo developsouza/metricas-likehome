@@ -112,8 +112,11 @@ export default function Sidebar({ isOpen, onClose }) {
     return (
         <aside className={`sidebar${isOpen ? " open" : ""}`}>
             <div className="sidebar-brand">
-                <h1>📊 Métricas LikeHome</h1>
-                <span>Gestão de Indicadores</span>
+                <div className="brand-mark"><span></span><span></span><span></span></div>
+                <div className="brand-copy">
+                    <h1>LikeHome</h1>
+                    <span>Intelligence</span>
+                </div>
             </div>
 
             <nav className="sidebar-nav">
@@ -195,7 +198,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     <strong>{usuario?.nome}</strong>
                     {labelDepto(usuario?.departamento)} · {usuario?.perfil}
                 </div>
-                <button className="nav-item" style={{ marginTop: 8, color: "rgba(255,255,255,.5)" }} onClick={logout}>
+                <button className="nav-item logout-item" onClick={logout}>
                     <IconLogout /> Sair
                 </button>
             </div>

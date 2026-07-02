@@ -25,6 +25,7 @@ export default function Login() {
     const [senha, setSenha] = useState("");
     const [erro, setErro] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
 
@@ -50,8 +51,9 @@ export default function Login() {
                     <div className="login-brand-icon">
                         <IconChart />
                     </div>
-                    <h1 className="login-brand-title">Métricas LikeHome</h1>
-                    <p className="login-brand-sub">Plataforma de gestão e acompanhamento de indicadores estratégicos para short stay.</p>
+                    <div className="login-kicker">LikeHome Intelligence</div>
+                    <h1 className="login-brand-title">Decisões melhores começam com uma visão mais clara.</h1>
+                    <p className="login-brand-sub">Indicadores, operação e estratégia conectados em um só lugar.</p>
                     <ul className="login-features">
                         {features.map((f, i) => (
                             <li key={i}>
@@ -72,8 +74,9 @@ export default function Login() {
                         <div className="login-logo-mobile">
                             <IconChart />
                         </div>
+                        <span className="login-form-kicker">Área segura</span>
                         <h2>Bem-vindo de volta</h2>
-                        <p>Acesse sua conta para continuar</p>
+                        <p>Entre para acessar seu workspace LikeHome.</p>
                     </div>
 
                     <form onSubmit={handleSubmit}>
@@ -96,14 +99,17 @@ export default function Login() {
                         </div>
                         <div className="form-group">
                             <label className="form-label">Senha</label>
+                            <div className="password-field">
                             <input
                                 className="form-control"
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 value={senha}
                                 onChange={(e) => setSenha(e.target.value)}
                                 placeholder="••••••••"
                                 required
                             />
+                            <button type="button" className="password-toggle" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}>{showPassword ? "Ocultar" : "Mostrar"}</button>
+                            </div>
                         </div>
                         <button
                             className="btn btn-primary"
