@@ -1,17 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-
-const IconChart = () => (
-    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width={28} height={28}>
-        <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-        />
-    </svg>
-);
+import logoLikeHome from "../../assets/logolikesvg.svg";
+import simboloLikeHome from "../../assets/logosemnome.png";
+import heroLikeHome from "../../assets/hero.png";
 
 const features = [
     { icon: "📊", text: "Dashboard de KRIs e KPIs em tempo real" },
@@ -48,10 +40,9 @@ export default function Login() {
             {/* Painel esquerdo — branding */}
             <div className="login-left">
                 <div className="login-left-content">
-                    <div className="login-brand-icon">
-                        <IconChart />
-                    </div>
-                    <div className="login-kicker">LikeHome Intelligence</div>
+                    <img className="login-brand-logo" src={logoLikeHome} alt="LikeHome Intelligence" />
+                    <img className="login-hero-art" src={heroLikeHome} alt="" aria-hidden="true" />
+                    <div className="login-kicker">Inteligência para hospitalidade</div>
                     <h1 className="login-brand-title">Decisões melhores começam com uma visão mais clara.</h1>
                     <p className="login-brand-sub">Indicadores, operação e estratégia conectados em um só lugar.</p>
                     <ul className="login-features">
@@ -72,7 +63,7 @@ export default function Login() {
                 <div className="login-form-wrap">
                     <div className="login-form-header">
                         <div className="login-logo-mobile">
-                            <IconChart />
+                            <img src={simboloLikeHome} alt="LikeHome" />
                         </div>
                         <span className="login-form-kicker">Área segura</span>
                         <h2>Bem-vindo de volta</h2>

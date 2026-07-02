@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { labelDepto } from "../utils/format";
+import logoLikeHome from "../assets/logolikesvg.svg";
 
 const IconDash = () => (
     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -112,11 +113,7 @@ export default function Sidebar({ isOpen, onClose }) {
     return (
         <aside className={`sidebar${isOpen ? " open" : ""}`}>
             <div className="sidebar-brand">
-                <div className="brand-mark"><span></span><span></span><span></span></div>
-                <div className="brand-copy">
-                    <h1>LikeHome</h1>
-                    <span>Intelligence</span>
-                </div>
+                <img className="sidebar-brand-logo" src={logoLikeHome} alt="LikeHome Intelligence" />
             </div>
 
             <nav className="sidebar-nav">
