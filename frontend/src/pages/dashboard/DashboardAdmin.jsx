@@ -348,7 +348,7 @@ export default function DashboardAdmin() {
     });
 
     return (
-        <div>
+        <div className="dashboard-page dashboard-admin">
             {/* Cabeçalho */}
             <div className="page-header">
                 <div>
@@ -376,7 +376,8 @@ export default function DashboardAdmin() {
             )}
 
             {/* KPI Cards — derivados das unidades reais */}
-            <div className="kpi-grid">
+            <div className="dashboard-section-heading"><div><span>Resumo executivo</span><h3>Panorama do portfólio</h3></div><p>Indicadores essenciais da operação no período selecionado.</p></div>
+            <div className="kpi-grid dashboard-kpis">
                 <KpiCard label="Unidades Ativas" value={resumo.unidadesAtivas} sub={`de ${resumo.totalUnidades} no portfólio`} cor="#22c55e" />
                 <KpiCard label="Em Integração" value={resumo.emIntegracao} sub="aguardando ativação" cor="#eab308" />
                 <KpiCard label="Fechamento / Pendente" value={resumo.emFechamento} sub="contrato pendente" cor="#f97316" />
@@ -396,7 +397,8 @@ export default function DashboardAdmin() {
             </div>
 
             {/* Gráficos principais */}
-            <div className="charts-grid">
+            <div className="dashboard-section-heading"><div><span>Análise operacional</span><h3>Desempenho e distribuição</h3></div><p>Leitura visual da evolução, pipeline e composição da carteira.</p></div>
+            <div className="charts-grid dashboard-grid admin-grid">
                 {/* Evolução de captações e saídas (12 meses, dados reais por data_ativacao/data_baixa) */}
                 <div className="chart-card" style={{ gridColumn: "span 2" }}>
                     <h3>📈 Captações e Saídas por Mês — Últimos 12 meses (dados reais)</h3>
@@ -517,7 +519,8 @@ export default function DashboardAdmin() {
             </div>
 
             {/* KRIs por Departamento */}
-            <div className="card" style={{ marginBottom: 20 }}>
+            <div className="dashboard-section-heading compact"><div><span>Indicadores estratégicos</span><h3>Resultados por departamento</h3></div></div>
+            <div className="card dashboard-table-card" style={{ marginBottom: 20 }}>
                 <div className="card-header">
                     <span className="card-title">KRIs por Departamento — {fmtCompetencia(comp)}</span>
                 </div>
@@ -629,7 +632,8 @@ export default function DashboardAdmin() {
             </div>
 
             {/* Tabela de Empreendimentos */}
-            <div className="card">
+            <div className="dashboard-section-heading compact"><div><span>Detalhamento</span><h3>Portfólio por empreendimento</h3></div></div>
+            <div className="card dashboard-table-card">
                 <div className="card-header">
                     <span className="card-title">Portfólio por Empreendimento</span>
                 </div>

@@ -34,7 +34,8 @@ export default function NotificationBell() {
   return (
     <div className="notification-wrap" ref={ref}>
       <button className="notification-bell" onClick={() => setAberto((v) => !v)} aria-label="Notificações">
-        🔔{dados.nao_lidas > 0 && <span>{dados.nao_lidas > 99 ? "99+" : dados.nao_lidas}</span>}
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+        {dados.nao_lidas > 0 && <span>{dados.nao_lidas > 99 ? "99+" : dados.nao_lidas}</span>}
       </button>
       {aberto && <div className="notification-dropdown">
         <div className="notification-head"><strong>Notificações</strong>{dados.nao_lidas > 0 && <button onClick={marcarTodas}>Marcar todas como lidas</button>}</div>

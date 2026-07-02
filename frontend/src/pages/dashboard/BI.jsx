@@ -143,7 +143,7 @@ export default function BI() {
     const radarData = getRadarDepto();
 
     return (
-        <div>
+        <div className="dashboard-page dashboard-bi">
             {/* Cabeçalho */}
             <div className="page-header">
                 <div>
@@ -169,7 +169,8 @@ export default function BI() {
             </div>
 
             {/* KPIs do portfólio */}
-            <div className="kpi-grid">
+            <div className="dashboard-section-heading"><div><span>Visão consolidada</span><h3>Resumo do portfólio</h3></div><p>Dimensão e estágio atual das unidades acompanhadas.</p></div>
+            <div className="kpi-grid dashboard-kpis">
                 <div className="kpi-card" style={{ "--kpi-color": "#0f4c81" }}>
                     <div className="kpi-label">Total Portfólio</div>
                     <div className="kpi-value">{totais?.total || 0}</div>
@@ -198,7 +199,8 @@ export default function BI() {
             </div>
 
             {/* Gráficos de portfólio real */}
-            <div className="charts-grid">
+            <div className="dashboard-section-heading"><div><span>Inteligência de negócio</span><h3>Tendências e composição</h3></div><p>Comparativos para identificar crescimento, concentração e desempenho.</p></div>
+            <div className="charts-grid dashboard-grid bi-grid">
                 {/* Evolução captações e saídas */}
                 <div className="chart-card" style={{ gridColumn: "span 2" }}>
                     <h3>📈 Captações e Saídas — Últimos 12 meses (dados reais)</h3>
@@ -338,7 +340,8 @@ export default function BI() {
             </div>
 
             {/* Tabela de empreendimentos completa */}
-            <div className="card" style={{ marginBottom: 20 }}>
+            <div className="dashboard-section-heading compact"><div><span>Base analítica</span><h3>Portfólio por empreendimento</h3></div></div>
+            <div className="card dashboard-table-card" style={{ marginBottom: 20 }}>
                 <div className="card-header">
                     <span className="card-title">Portfólio Completo por Empreendimento</span>
                 </div>
@@ -401,7 +404,8 @@ export default function BI() {
             </div>
 
             {/* Detalhamento de KRIs por Depto — aparece apenas se existirem lançamentos */}
-            <div className="card">
+            <div className="dashboard-section-heading compact"><div><span>Desempenho estratégico</span><h3>KRIs por departamento</h3></div></div>
+            <div className="card dashboard-table-card">
                 <div className="card-header" style={{ flexWrap: "wrap", gap: 8 }}>
                     <span className="card-title">
                         KRIs por Departamento — {fmtCompetencia(inicio)} a {fmtCompetencia(fim)}
