@@ -279,20 +279,12 @@ export default function Pipeline() {
             </div>
 
             {/* Resumo por status */}
-            <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+            <div className="pipeline-status-grid">
                 {STATUS_LIST.map((s) => (
                     <div
                         key={s}
                         onClick={() => setFiltroStatus(filtroStatus === s ? "" : s)}
-                        style={{
-                            background: "#fff",
-                            border: `2px solid ${filtroStatus === s ? "var(--primary)" : "var(--neutral-200)"}`,
-                            borderRadius: 8,
-                            padding: "10px 16px",
-                            cursor: "pointer",
-                            minWidth: 110,
-                            textAlign: "center",
-                        }}
+                        className={`pipeline-status-card${filtroStatus === s ? " active" : ""}`}
                     >
                         <div style={{ fontSize: 22, fontWeight: 700, color: "var(--neutral-900)" }}>{statCount(s)}</div>
                         <div style={{ fontSize: 11, color: "var(--neutral-500)", marginTop: 2 }}>{labelStatus(s)}</div>

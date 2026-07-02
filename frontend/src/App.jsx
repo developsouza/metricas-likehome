@@ -18,7 +18,7 @@ const Importacao = lazy(() => import("./pages/importacao/Importacao"));
 const AcompanhamentoSetores = lazy(() => import("./pages/AnaliseGestao/AcompanhamentoSetores"));
 
 function LoadingScreen() {
-    return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: "#64748b" }}>Carregando...</div>;
+    return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: "var(--text-muted)", background: "var(--page)" }}>Carregando...</div>;
 }
 
 function PrivateRoute({ children, adminOnly = false, roles }) {
