@@ -2,6 +2,8 @@
 
 Sistema de gestão e acompanhamento de indicadores estratégicos (KRIs/KPIs) para administração de imóveis/short stay, com dashboard BI consolidado.
 
+> Para visão de produto, cobertura completa das telas, matriz de perfis e roteiro de demonstração, consulte a [Documentação Comercial e Funcional](DOCUMENTACAO_COMERCIAL.md) ou a [versão pronta para envio em PDF](output/pdf/metricas-likehome-documentacao-comercial.pdf).
+
 ---
 
 ## 🛠️ Stack Tecnológica

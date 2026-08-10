@@ -23,6 +23,9 @@ backend/data/
 *.log
 logs/
 
+# ── Arquivos temporários de geração ──────────
+tmp/
+
 # ── Editores / OS ────────────────────────────
 .DS_Store
 Thumbs.db
