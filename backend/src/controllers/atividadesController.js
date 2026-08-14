@@ -80,7 +80,7 @@ function listar(req, res) {
   if (req.query.fim) { sql += " AND date(a.criado_em)<=date(?)"; params.push(req.query.fim); }
   if (req.query.atrasadas === "1") sql += " AND a.prazo IS NOT NULL AND datetime(a.prazo)<datetime('now') AND a.status NOT IN ('Concluído','Cancelado')";
   if (req.query.sem_atualizacao_dias) { sql += " AND datetime(COALESCE(a.atualizado_em,a.criado_em))<=datetime('now', ?)"; params.push(`-${Number(req.query.sem_atualizacao_dias) || 7} days`); }
-  sql += " ORDER BY CASE a.prioridade WHEN 'Urgente' THEN 1 WHEN 'Alta' THEN 2 WHEN 'Média' THEN 3 ELSE 4 END, COALESCE(a.prazo,'9999-12-31'), a.id DESC";
+  sql += " ORDER BY datetime(COALESCE(a.atualizado_em,a.criado_em)) DESC, a.id DESC";
   res.json(db.prepare(sql).all(...params));
 }
 
@@ -167,6 +167,7 @@ function comentar(req, res) {
   db.exec("BEGIN");
   try {
     const result = db.prepare("INSERT INTO atividades_comentarios (atividade_id,usuario_id,comentario) VALUES (?,?,?)").run(atividade.id, req.user.id, texto);
+    db.prepare("UPDATE atividades SET atualizado_por=?,atualizado_em=CURRENT_TIMESTAMP WHERE id=?").run(req.user.id, atividade.id);
     registrarHistorico(atividade.id, req.user.id, "comentário");
     notificar(atividade, req.user.id, "comentario_criado", "Novo comentário", `${req.user.nome} comentou em “${atividade.titulo}”.`);
     const comentario = db.prepare(`SELECT c.*,u.nome usuario_nome FROM atividades_comentarios c JOIN usuarios u ON u.id=c.usuario_id WHERE c.id=?`).get(result.lastInsertRowid);
