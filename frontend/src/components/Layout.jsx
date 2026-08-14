@@ -9,6 +9,7 @@ const titles = {
     "/bi": "Análise BI",
     "/pipeline": "Pipeline de Unidades",
     "/empreendimentos": "Empreendimentos",
+    "/unidades/checkup": "Unidades / Checkup",
     "/unidades": "Unidades",
     "/lancamentos": "Lançamento de Indicadores",
     "/indicadores": "Indicadores",

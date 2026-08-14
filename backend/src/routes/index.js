@@ -14,6 +14,7 @@ const importCtrl = require("../controllers/importController");
 const atividades = require("../controllers/atividadesController");
 const notificacoes = require("../controllers/notificacoesController");
 const solicitacoesProprietarios = require("../controllers/solicitacoesProprietariosController");
+const checkup = require("../controllers/checkupController");
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -47,6 +48,15 @@ router.put("/notificacoes/:id/lida", authMiddleware, notificacoes.marcarLida);
 router.get("/solicitacoes-proprietarios", authMiddleware, solicitacoesProprietarios.listar);
 router.post("/solicitacoes-proprietarios", authMiddleware, solicitacoesProprietarios.criar);
 router.put("/solicitacoes-proprietarios/:id", authMiddleware, solicitacoesProprietarios.atualizar);
+router.get("/checkups", authMiddleware, checkup.listar);
+router.get("/checkups/responsaveis", authMiddleware, checkup.responsaveis);
+router.post("/checkups", authMiddleware, checkup.criar);
+router.get("/checkups/:id", authMiddleware, checkup.buscar);
+router.put("/checkups/:id", authMiddleware, checkup.atualizar);
+router.put("/checkups/:id/setores/:setor", authMiddleware, checkup.salvarSetor);
+router.post("/checkups/:id/acoes", authMiddleware, checkup.criarAcao);
+router.put("/checkups/:id/acoes/:acaoId", authMiddleware, checkup.atualizarAcao);
+router.post("/checkups/:id/concluir", authMiddleware, checkup.concluir);
 
 // Dashboard
 router.get("/dashboard/admin", authMiddleware, adminMiddleware, dashboard.dashboardAdmin);

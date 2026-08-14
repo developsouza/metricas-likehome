@@ -16,6 +16,7 @@ const Unidades = lazy(() => import("./pages/admin/Unidades"));
 const Proprietarios = lazy(() => import("./pages/admin/Proprietarios"));
 const Importacao = lazy(() => import("./pages/importacao/Importacao"));
 const AcompanhamentoSetores = lazy(() => import("./pages/AnaliseGestao/AcompanhamentoSetores"));
+const Checkup = lazy(() => import("./pages/checkup/Checkup"));
 
 function LoadingScreen() {
     return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: "var(--text-muted)", background: "var(--page)" }}>Carregando...</div>;
@@ -114,6 +115,7 @@ function AppRoutes() {
                     </PrivateRoute>
                 }
             />
+            <Route path="/unidades/checkup" element={<PrivateRoute><Layout><Checkup /></Layout></PrivateRoute>} />
             <Route
                 path="/indicadores"
                 element={

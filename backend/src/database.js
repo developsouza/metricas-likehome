@@ -181,6 +181,90 @@ function initDatabase() {
       FOREIGN KEY (criado_por) REFERENCES usuarios(id)
     );
 
+    CREATE TABLE IF NOT EXISTS checkup_diagnosticos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      unidade_id INTEGER NOT NULL,
+      periodo TEXT NOT NULL,
+      responsavel_geral_id INTEGER,
+      data_analise DATE NOT NULL DEFAULT (date('now')),
+      status TEXT NOT NULL DEFAULT 'Em elaboração' CHECK(status IN ('Em elaboração','Aguardando setores','Em análise','Concluído')),
+      saude_geral REAL,
+      preenchimento REAL NOT NULL DEFAULT 0,
+      classificacao TEXT,
+      parecer TEXT,
+      recomendacoes TEXT,
+      prioridades_proximo_periodo TEXT,
+      criado_por INTEGER NOT NULL,
+      criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      atualizado_em DATETIME,
+      concluido_em DATETIME,
+      FOREIGN KEY (unidade_id) REFERENCES unidades(id),
+      FOREIGN KEY (responsavel_geral_id) REFERENCES usuarios(id),
+      FOREIGN KEY (criado_por) REFERENCES usuarios(id),
+      UNIQUE(unidade_id, periodo)
+    );
+
+    CREATE TABLE IF NOT EXISTS checkup_setores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      diagnostico_id INTEGER NOT NULL,
+      setor TEXT NOT NULL,
+      respostas_json TEXT NOT NULL DEFAULT '{}',
+      saude REAL,
+      status TEXT NOT NULL DEFAULT 'Pendente' CHECK(status IN ('Pendente','Em preenchimento','Concluído')),
+      responsavel_id INTEGER,
+      atualizado_em DATETIME,
+      FOREIGN KEY (diagnostico_id) REFERENCES checkup_diagnosticos(id),
+      FOREIGN KEY (responsavel_id) REFERENCES usuarios(id),
+      UNIQUE(diagnostico_id, setor)
+    );
+
+    CREATE TABLE IF NOT EXISTS checkup_planos_acao (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      diagnostico_id INTEGER NOT NULL,
+      setor TEXT NOT NULL,
+      titulo TEXT NOT NULL,
+      descricao TEXT,
+      problema_relacionado TEXT,
+      prioridade TEXT NOT NULL DEFAULT 'Média' CHECK(prioridade IN ('Baixa','Média','Alta','Crítica')),
+      responsavel_id INTEGER,
+      prazo DATE,
+      status TEXT NOT NULL DEFAULT 'Pendente' CHECK(status IN ('Pendente','Em andamento','Aguardando terceiro','Resolvido','Cancelado')),
+      observacoes TEXT,
+      criado_por INTEGER NOT NULL,
+      criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      atualizado_em DATETIME,
+      FOREIGN KEY (diagnostico_id) REFERENCES checkup_diagnosticos(id),
+      FOREIGN KEY (responsavel_id) REFERENCES usuarios(id),
+      FOREIGN KEY (criado_por) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS checkup_historico (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      diagnostico_id INTEGER NOT NULL UNIQUE,
+      unidade_id INTEGER NOT NULL,
+      periodo TEXT NOT NULL,
+      saude_geral REAL NOT NULL,
+      preenchimento REAL NOT NULL,
+      classificacao TEXT NOT NULL,
+      snapshot_json TEXT NOT NULL,
+      criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (diagnostico_id) REFERENCES checkup_diagnosticos(id),
+      FOREIGN KEY (unidade_id) REFERENCES unidades(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS checkup_auditoria (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      diagnostico_id INTEGER NOT NULL,
+      setor TEXT,
+      usuario_id INTEGER NOT NULL,
+      acao TEXT NOT NULL,
+      valor_anterior TEXT,
+      valor_novo TEXT,
+      criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (diagnostico_id) REFERENCES checkup_diagnosticos(id),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_atividades_departamento_status ON atividades(departamento, status);
     CREATE INDEX IF NOT EXISTS idx_atividades_responsavel ON atividades(responsavel_id);
     CREATE INDEX IF NOT EXISTS idx_comentarios_atividade ON atividades_comentarios(atividade_id);
@@ -189,6 +273,9 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_unidades_filtros ON unidades(status, empreendimento_id, responsavel_id);
     CREATE INDEX IF NOT EXISTS idx_lancamentos_competencia ON lancamentos_indicadores(competencia, indicador_id);
     CREATE INDEX IF NOT EXISTS idx_solicitacoes_status_data ON solicitacoes_proprietarios(status, data_solicitacao);
+    CREATE INDEX IF NOT EXISTS idx_checkup_unidade_periodo ON checkup_diagnosticos(unidade_id, periodo);
+    CREATE INDEX IF NOT EXISTS idx_checkup_setores_diagnostico ON checkup_setores(diagnostico_id, setor);
+    CREATE INDEX IF NOT EXISTS idx_checkup_acoes_diagnostico ON checkup_planos_acao(diagnostico_id, status);
   `);
 }
 

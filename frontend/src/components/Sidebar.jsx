@@ -126,6 +126,9 @@ export default function Sidebar({ isOpen, onClose }) {
                         <button className={`nav-item ${isActive("/analise-gestao") ? "active" : ""}`} onClick={() => go("/analise-gestao")}>
                             <IconPipeline /> Acompanhamento de Setores
                         </button>
+                        <button className={`nav-item ${isActive("/unidades/checkup") ? "active" : ""}`} onClick={() => go("/unidades/checkup")}>
+                            <IconUnits /> Checkup das Acomodações
+                        </button>
                     </>
                 ) : isAdmin ? (
                     <>
@@ -147,8 +150,11 @@ export default function Sidebar({ isOpen, onClose }) {
                         <button className={`nav-item ${isActive("/empreendimentos") ? "active" : ""}`} onClick={() => go("/empreendimentos")}>
                             <IconBuilding /> Empreendimentos
                         </button>
-                        <button className={`nav-item ${isActive("/unidades") ? "active" : ""}`} onClick={() => go("/unidades")}>
+                        <button className={`nav-item ${location.pathname === "/unidades" ? "active" : ""}`} onClick={() => go("/unidades")}>
                             <IconUnits /> Unidades
+                        </button>
+                        <button className={`nav-item nav-subitem ${isActive("/unidades/checkup") ? "active" : ""}`} onClick={() => go("/unidades/checkup")}>
+                            <span className="nav-subitem-dot" /> Checkup
                         </button>
                         <button className={`nav-item ${isActive("/proprietarios") ? "active" : ""}`} onClick={() => go("/proprietarios")}>
                             <IconOwner /> Proprietários
@@ -185,6 +191,9 @@ export default function Sidebar({ isOpen, onClose }) {
                         <div className="nav-section">Consulta</div>
                         <button className={`nav-item ${isActive("/pipeline") ? "active" : ""}`} onClick={() => go("/pipeline")}>
                             <IconPipeline /> Pipeline de Unidades
+                        </button>
+                        <button className={`nav-item ${isActive("/unidades/checkup") ? "active" : ""}`} onClick={() => go("/unidades/checkup")}>
+                            <IconUnits /> Checkup das Acomodações
                         </button>
                     </>
                 )}
