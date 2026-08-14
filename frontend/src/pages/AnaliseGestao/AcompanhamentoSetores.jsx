@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import api from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { deptos, labelDepto } from "../../utils/format";
+import SolicitacoesProprietarios from "./SolicitacoesProprietarios";
 
 const STATUS = ["A Fazer", "Em Andamento", "Aguardando Validação", "Concluído", "Cancelado"];
 const PRIORIDADES = ["Baixa", "Média", "Alta", "Urgente"];
@@ -90,6 +91,7 @@ export default function AcompanhamentoSetores() {
   const [modal, setModal] = useState(null);
   const [filtros, setFiltros] = useState({ status: "", prioridade: "", responsavel_id: "", inicio: "", fim: "", atrasadas: false, sem_atualizacao_dias: "" });
   const [responsaveis, setResponsaveis] = useState([]);
+  const [visaoComercial, setVisaoComercial] = useState("atividades");
   const podeCriar = usuario?.perfil !== "analise_gestao";
   const podeEditar = usuario?.perfil === "admin" || usuario?.perfil === "usuario";
 
@@ -111,11 +113,14 @@ export default function AcompanhamentoSetores() {
   function fecharSalvando() { setModal(null); carregar(); }
 
   return <div>
-    <div className="page-header"><div><h2>Acompanhamento de Setores</h2><p>Atividades, responsáveis e prazos em uma visão única.</p></div>{podeCriar && <button className="btn btn-primary" onClick={() => setModal("nova")}>+ Nova atividade</button>}</div>
-    {estrategico && <div className="tabs department-tabs">{departamentos.map((d) => <button key={d} className={`tab-btn ${departamento === d ? "active" : ""}`} onClick={() => setDepartamento(d)}>{labelDepto(d)}</button>)}</div>}
+    <div className="page-header"><div><h2>Acompanhamento de Setores</h2><p>Atividades, responsáveis e prazos em uma visão única.</p></div>{podeCriar && !(departamento === "Comercial" && visaoComercial === "solicitacoes") && <button className="btn btn-primary" onClick={() => setModal("nova")}>+ Nova atividade</button>}</div>
+    {estrategico && <div className="tabs department-tabs">{departamentos.map((d) => <button key={d} className={`tab-btn ${departamento === d ? "active" : ""}`} onClick={() => { setDepartamento(d); setVisaoComercial("atividades"); }}>{labelDepto(d)}</button>)}</div>}
+    {departamento === "Comercial" && <div className="tabs" style={{ margin: "12px 0 20px" }}><button className={`tab-btn ${visaoComercial === "atividades" ? "active" : ""}`} onClick={() => setVisaoComercial("atividades")}>Atividades</button><button className={`tab-btn ${visaoComercial === "solicitacoes" ? "active" : ""}`} onClick={() => setVisaoComercial("solicitacoes")}>Solicitações de Proprietários</button></div>}
+    {departamento === "Comercial" && visaoComercial === "solicitacoes" ? <SolicitacoesProprietarios somenteLeitura={!podeCriar} /> : <>
     <div className="activity-summary">{[["Total", resumo.total], ["A fazer", resumo.pendentes], ["Em andamento", resumo.andamento], ["Validação", resumo.validacao], ["Concluídas", resumo.concluidas], ["Atrasadas", resumo.atrasadas]].map(([l, v]) => <div className="summary-card" key={l}><span>{l}</span><strong>{v}</strong></div>)}</div>
     <div className="card activity-filters"><div className="card-body"><select className="form-control" value={filtros.status} onChange={(e) => setFiltros((f) => ({ ...f, status: e.target.value }))}><option value="">Todos os status</option>{STATUS.map((s) => <option key={s}>{s}</option>)}</select><select className="form-control" value={filtros.prioridade} onChange={(e) => setFiltros((f) => ({ ...f, prioridade: e.target.value }))}><option value="">Todas as prioridades</option>{PRIORIDADES.map((p) => <option key={p}>{p}</option>)}</select><select className="form-control" value={filtros.responsavel_id} onChange={(e) => setFiltros((f) => ({ ...f, responsavel_id: e.target.value }))}><option value="">Todos os responsáveis</option>{responsaveis.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</select><input className="form-control" type="date" value={filtros.inicio} onChange={(e) => setFiltros((f) => ({ ...f, inicio: e.target.value }))} title="Criadas a partir de" /><input className="form-control" type="date" value={filtros.fim} onChange={(e) => setFiltros((f) => ({ ...f, fim: e.target.value }))} title="Criadas até" /><label><input type="checkbox" checked={filtros.atrasadas} onChange={(e) => setFiltros((f) => ({ ...f, atrasadas: e.target.checked }))} /> Só atrasadas</label><select className="form-control" value={filtros.sem_atualizacao_dias} onChange={(e) => setFiltros((f) => ({ ...f, sem_atualizacao_dias: e.target.value }))}><option value="">Qualquer atualização</option><option value="7">Sem atualização há 7 dias</option><option value="15">Sem atualização há 15 dias</option><option value="30">Sem atualização há 30 dias</option></select></div></div>
     {loading ? <div className="loading">Carregando atividades...</div> : <div className="kanban-board">{STATUS.map((status) => { const itens = atividades.filter((a) => a.status === status); return <section className="kanban-column" key={status}><header><strong>{status}</strong><span>{itens.length}</span></header><div>{itens.map((a) => <button key={a.id} className={`activity-card priority-${a.prioridade.toLowerCase().replace("é", "e")}${a.atrasada ? " overdue" : ""}`} onClick={() => setModal(a)}><div><span className="priority-label">{a.prioridade}</span>{a.atrasada ? <span className="overdue-label">Atrasada</span> : null}</div><h4>{a.titulo}</h4>{a.descricao && <p>{a.descricao}</p>}<footer><span>{a.responsavel_nome || "Sem responsável"}</span><span>💬 {a.comentarios_total}</span></footer>{a.prazo && <small>Prazo: {new Date(a.prazo).toLocaleString("pt-BR")}</small>}</button>)}</div></section>; })}</div>}
+    </>}
     {modal && <ModalAtividade atividade={modal === "nova" ? null : modal} departamento={departamento} podeEditar={modal === "nova" ? podeCriar : podeEditar} podeExcluir={usuario?.perfil === "admin"} onClose={() => setModal(null)} onSaved={fecharSalvando} />}
   </div>;
 }

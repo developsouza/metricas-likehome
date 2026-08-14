@@ -162,6 +162,25 @@ function initDatabase() {
       FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
     );
 
+    CREATE TABLE IF NOT EXISTS solicitacoes_proprietarios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      data_solicitacao DATE NOT NULL,
+      atendente TEXT NOT NULL CHECK(atendente IN ('Jéssica','Steffany')),
+      proprietario_id INTEGER NOT NULL,
+      unidade_id INTEGER,
+      motivo TEXT NOT NULL,
+      respondido_em DATE,
+      status TEXT NOT NULL DEFAULT 'Em andamento' CHECK(status IN ('Em andamento','Encerrado')),
+      satisfacao TEXT CHECK(satisfacao IN ('Muito satisfeito','Satisfeito','Insatisfeito','Muito insatisfeito')),
+      descricao TEXT,
+      criado_por INTEGER NOT NULL,
+      criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      atualizado_em DATETIME,
+      FOREIGN KEY (proprietario_id) REFERENCES proprietarios(id),
+      FOREIGN KEY (unidade_id) REFERENCES unidades(id),
+      FOREIGN KEY (criado_por) REFERENCES usuarios(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_atividades_departamento_status ON atividades(departamento, status);
     CREATE INDEX IF NOT EXISTS idx_atividades_responsavel ON atividades(responsavel_id);
     CREATE INDEX IF NOT EXISTS idx_comentarios_atividade ON atividades_comentarios(atividade_id);
@@ -169,6 +188,7 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_notificacoes_usuario_lida ON notificacoes(usuario_id, lida, criado_em);
     CREATE INDEX IF NOT EXISTS idx_unidades_filtros ON unidades(status, empreendimento_id, responsavel_id);
     CREATE INDEX IF NOT EXISTS idx_lancamentos_competencia ON lancamentos_indicadores(competencia, indicador_id);
+    CREATE INDEX IF NOT EXISTS idx_solicitacoes_status_data ON solicitacoes_proprietarios(status, data_solicitacao);
   `);
 }
 

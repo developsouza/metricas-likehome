@@ -13,6 +13,7 @@ const dashboard = require("../controllers/dashboardController");
 const importCtrl = require("../controllers/importController");
 const atividades = require("../controllers/atividadesController");
 const notificacoes = require("../controllers/notificacoesController");
+const solicitacoesProprietarios = require("../controllers/solicitacoesProprietariosController");
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -43,6 +44,9 @@ router.get("/atividades/:id/historico", authMiddleware, atividades.historico);
 router.get("/notificacoes", authMiddleware, notificacoes.listar);
 router.put("/notificacoes/marcar-todas-lidas", authMiddleware, notificacoes.marcarTodas);
 router.put("/notificacoes/:id/lida", authMiddleware, notificacoes.marcarLida);
+router.get("/solicitacoes-proprietarios", authMiddleware, solicitacoesProprietarios.listar);
+router.post("/solicitacoes-proprietarios", authMiddleware, solicitacoesProprietarios.criar);
+router.put("/solicitacoes-proprietarios/:id", authMiddleware, solicitacoesProprietarios.atualizar);
 
 // Dashboard
 router.get("/dashboard/admin", authMiddleware, adminMiddleware, dashboard.dashboardAdmin);
