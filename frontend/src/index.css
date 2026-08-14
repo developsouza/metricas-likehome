@@ -1124,6 +1124,14 @@ tbody tr:last-child td {
 .nav-subitem { margin-left: 28px; width: calc(100% - 28px); min-height: 34px; font-size: 12px; }
 .nav-subitem-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-left: 7px; flex: 0 0 auto; }
 .checkup-page { min-width: 0; }
+
+/* Importação usa toda a área de conteúdo, alinhada às telas de gestão. */
+.importacao-page { min-width: 0; width: 100%; }
+.importacao-info-box, .importacao-dropzone { width: 100%; }
+@media (max-width: 680px) {
+    .importacao-tipos-grid, .importacao-validacao-grid { grid-template-columns: 1fr !important; }
+    .importacao-dropzone { padding: 24px 16px !important; }
+}
 .checkup-back { border: 0; background: none; color: var(--primary); padding: 0 0 7px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
 .checkup-header-stats { display: grid; grid-template-columns: repeat(5,minmax(130px,1fr)); gap: 10px; margin-bottom: 18px; }
 .checkup-header-stats > div { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow-sm); }

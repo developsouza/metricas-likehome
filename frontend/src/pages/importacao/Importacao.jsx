@@ -134,14 +134,14 @@ export default function Importacao() {
     }
 
     return (
-        <div style={s.page}>
+        <div className="importacao-page" style={s.page}>
             <h2 style={s.titulo}>Importar CSV</h2>
             <p style={s.subtitulo}>
                 Importe dados em massa a partir de arquivos CSV. O sistema mapeia as colunas automaticamente e informa o que está faltando.
             </p>
 
             {/* Seletor de tipo */}
-            <div style={s.tiposGrid}>
+            <div className="importacao-tipos-grid" style={s.tiposGrid}>
                 {TIPOS.map((t) => (
                     <button key={t.id} style={{ ...s.tipoCard, ...(tipoSel === t.id ? s.tipoCardAtivo : {}) }} onClick={() => onTipoChange(t.id)}>
                         <span style={s.tipoLabel}>{t.label}</span>
@@ -151,7 +151,7 @@ export default function Importacao() {
             </div>
 
             {/* Informações sobre colunas */}
-            <div style={s.infoBox}>
+            <div className="importacao-info-box" style={s.infoBox}>
                 <div style={s.infoSecao}>
                     <strong>Colunas obrigatórias:</strong>
                     <div style={s.tagRow}>
@@ -188,6 +188,7 @@ export default function Importacao() {
 
             {/* Zona de upload */}
             <div
+                className="importacao-dropzone"
                 style={{ ...s.dropzone, ...(arrastando ? s.dropzoneAtivo : {}) }}
                 onDragOver={(e) => {
                     e.preventDefault();
@@ -226,7 +227,7 @@ export default function Importacao() {
                         {validacao.valido ? "✅ CSV válido — pronto para importar" : "❌ CSV com problemas — corrija antes de importar"}
                     </h4>
 
-                    <div style={s.validacaoGrid}>
+                    <div className="importacao-validacao-grid" style={s.validacaoGrid}>
                         <div>
                             <strong>Colunas obrigatórias</strong>
                             {tipo.obrigatorias.map((c) => (
@@ -274,13 +275,13 @@ export default function Importacao() {
                             <Stat label="Empreendimentos criados" valor={resultado.empreendimentos} />
                             <Stat label="Proprietários criados" valor={resultado.proprietarios} />
                             <Stat label="Unidades novas" valor={resultado.unidades} cor="#16a34a" />
-                            <Stat label="Unidades atualizadas" valor={resultado.atualizadas} cor="#2563eb" />
+                            <Stat label="Unidades atualizadas" valor={resultado.atualizadas} cor="var(--primary)" />
                             <Stat label="Sem alteração" valor={resultado.ignoradas} cor="#6b7280" />
                         </div>
                     ) : (
                         <div style={s.statsGrid}>
                             <Stat label="Novos lançamentos" valor={resultado.inseridos} cor="#16a34a" />
-                            <Stat label="Atualizados" valor={resultado.atualizados} cor="#2563eb" />
+                            <Stat label="Atualizados" valor={resultado.atualizados} cor="var(--primary)" />
                             <Stat label="Ignorados (linhas vazias)" valor={resultado.ignorados} cor="#6b7280" />
                         </div>
                     )}
@@ -307,7 +308,7 @@ export default function Importacao() {
     );
 }
 
-function Stat({ label, valor, cor = "#1d4ed8" }) {
+function Stat({ label, valor, cor = "var(--primary)" }) {
     return (
         <div style={s.statCard}>
             <div style={{ ...s.statValor, color: cor }}>{valor ?? 0}</div>
@@ -319,11 +320,11 @@ function Stat({ label, valor, cor = "#1d4ed8" }) {
 // ─── ESTILOS ──────────────────────────────────────────────────────────────────
 
 const s = {
-    page: { padding: "24px", maxWidth: 900 },
+    page: { width: "100%", maxWidth: "none" },
     titulo: { fontSize: 22, fontWeight: 700, marginBottom: 6 },
     subtitulo: { color: "var(--text-muted)", marginBottom: 24, fontSize: 14 },
 
-    tiposGrid: { display: "flex", gap: 12, marginBottom: 20 },
+    tiposGrid: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginBottom: 20, width: "100%" },
     tipoCard: {
         flex: 1,
         padding: "14px 18px",
@@ -387,8 +388,8 @@ const s = {
         alignSelf: "flex-start",
         padding: "6px 14px",
         background: "var(--surface)",
-        border: "1px solid #2563eb",
-        color: "#2563eb",
+        border: "1px solid var(--primary)",
+        color: "var(--primary)",
         borderRadius: 7,
         cursor: "pointer",
         fontSize: 13,
@@ -420,7 +421,7 @@ const s = {
     },
     loadingBox: {
         textAlign: "center",
-        color: "#2563eb",
+        color: "var(--primary)",
         padding: 16,
         fontSize: 15,
     },
@@ -449,7 +450,7 @@ const s = {
     btnImportar: {
         marginTop: 8,
         padding: "10px 24px",
-        background: "#2563eb",
+        background: "var(--primary)",
         color: "#fff",
         border: "none",
         borderRadius: 8,
@@ -486,8 +487,8 @@ const s = {
     btnNovo: {
         padding: "8px 20px",
         background: "var(--surface)",
-        border: "1px solid #2563eb",
-        color: "#2563eb",
+        border: "1px solid var(--primary)",
+        color: "var(--primary)",
         borderRadius: 7,
         cursor: "pointer",
         fontSize: 14,
