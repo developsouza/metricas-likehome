@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ComposedChart, Bar, Line, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import api from "../../services/api";
-import { fmtValor, fmtCompetencia, fmtData, competenciaAtual, labelStatus, labelDepto } from "../../utils/format";
+import { classificacaoIndicador, fmtValor, fmtCompetencia, fmtData, competenciaAtual, labelStatus, labelDepto } from "../../utils/format";
 import Paginacao from "../../components/Paginacao";
 
 const POR_PAGINA_EMP = 15;
@@ -536,7 +536,7 @@ export default function DashboardAdmin() {
                                     <th>Realizado</th>
                                     <th>Meta</th>
                                     <th>Atingimento</th>
-                                    <th>Status</th>
+                                    <th>Classificação</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -549,14 +549,7 @@ export default function DashboardAdmin() {
                                     </tr>
                                 ) : (
                                     krisPorDepto.map((k, i) => {
-                                        const status =
-                                            k.percentual === null
-                                                ? "sem_lancamento"
-                                                : k.percentual >= 100
-                                                  ? "acima"
-                                                  : k.percentual >= 80
-                                                    ? "atencao"
-                                                    : "abaixo";
+                                        const classificacao = classificacaoIndicador(k.percentual);
                                         return (
                                             <tr key={i}>
                                                 <td>
@@ -586,9 +579,9 @@ export default function DashboardAdmin() {
                                                                     fontWeight: 600,
                                                                     minWidth: 40,
                                                                     color:
-                                                                        status === "acima"
+                                                                        classificacao.status === "acima"
                                                                             ? "var(--success)"
-                                                                            : status === "atencao"
+                                                                            : classificacao.status === "atencao"
                                                                               ? "var(--warning)"
                                                                               : "var(--danger)",
                                                                 }}
@@ -601,9 +594,9 @@ export default function DashboardAdmin() {
                                                                     style={{
                                                                         width: `${Math.min(k.percentual, 100)}%`,
                                                                         background:
-                                                                            status === "acima"
+                                                                            classificacao.status === "acima"
                                                                                 ? "var(--success)"
-                                                                                : status === "atencao"
+                                                                                : classificacao.status === "atencao"
                                                                                   ? "var(--warning)"
                                                                                   : "var(--danger)",
                                                                     }}
@@ -613,15 +606,7 @@ export default function DashboardAdmin() {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    <span className={`status-badge s-${status}`}>
-                                                        {status === "acima"
-                                                            ? "Acima"
-                                                            : status === "atencao"
-                                                              ? "Atenção"
-                                                              : status === "abaixo"
-                                                                ? "Abaixo"
-                                                                : "Calculado"}
-                                                    </span>
+                                                    <span className={`status-badge s-${classificacao.status}`}>{classificacao.label}</span>
                                                 </td>
                                             </tr>
                                         );

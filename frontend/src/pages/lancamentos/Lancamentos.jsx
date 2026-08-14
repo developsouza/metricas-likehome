@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
-import { fmtValor, fmtCompetencia, competenciaAtual, labelDepto, deptos } from '../../utils/format'
+import { classificacaoIndicador, fmtValor, fmtCompetencia, competenciaAtual, labelDepto, deptos } from '../../utils/format'
 
 function ModalLancamento({ indicador, lancamento, competencia, onClose, onSave }) {
   const [valor, setValor] = useState(lancamento?.valor_realizado ?? '')
@@ -161,6 +161,7 @@ export default function Lancamentos() {
                       <th>Realizado</th>
                       <th>Meta Período</th>
                       <th>Atingimento</th>
+                      <th>Classificação</th>
                       <th>Observação</th>
                       <th>Ações</th>
                     </tr>
@@ -169,7 +170,7 @@ export default function Lancamentos() {
                     {inds.map(ind => {
                       const lanc = getLancamento(ind.id)
                       const pct = lanc?.meta ? Math.round(lanc.valor_realizado / lanc.meta * 100) : null
-                      const status = pct === null ? 'sem_lancamento' : pct >= 100 ? 'acima' : pct >= 80 ? 'atencao' : 'abaixo'
+                      const classificacao = classificacaoIndicador(pct)
                       return (
                         <tr key={ind.id} style={{ background: lanc ? '' : 'rgba(253,230,138,.06)' }}>
                           <td><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: ind.tipo === 'KRI' ? 'var(--primary)' : 'var(--neutral-200)', color: ind.tipo === 'KRI' ? '#fff' : 'var(--neutral-600)' }}>{ind.tipo}</span></td>
@@ -184,6 +185,11 @@ export default function Lancamentos() {
                                 {pct !== null ? `${pct}%` : '—'}
                               </span>
                             )}
+                          </td>
+                          <td>
+                            <span className={`status-badge s-${classificacao.status}`}>
+                              {classificacao.label}
+                            </span>
                           </td>
                           <td className="text-muted" style={{ maxWidth: 180, fontSize: 12 }}>{lanc?.observacao || '—'}</td>
                           <td>

@@ -9,7 +9,7 @@
 
 ## 1. Visão do produto
 
-O **Métricas LikeHome** é uma plataforma de inteligência operacional e gestão de desempenho para empresas de hospitalidade, administração de imóveis e short stay. O sistema conecta, em um único ambiente:
+O **Métricas LikeHome** é uma plataforma de inteligência operacional e gestão de desempenho para empresas de hospedagem, administração de imóveis e short stay. O sistema conecta, em um único ambiente:
 
 - carteira de empreendimentos, proprietários e unidades;
 - funil comercial de captação e ativação de imóveis;
@@ -659,6 +659,6 @@ Esses pontos não impedem o uso da solução no escopo atual, mas devem ser cons
 
 ## 15. Resumo para proposta
 
-O Métricas LikeHome entrega uma camada central de gestão para operações de hospitalidade e administração de imóveis. Sua cobertura funcional vai do cadastro granular de unidades à análise executiva, passando por pipeline, metas mensais, tarefas setoriais, alertas, importação e exportação. A separação por perfis permite que direção, gestão e departamentos trabalhem no mesmo ambiente com experiências adequadas às suas responsabilidades.
+O Métricas LikeHome entrega uma camada central de gestão para operações de hospedagem e administração de imóveis. Sua cobertura funcional vai do cadastro granular de unidades à análise executiva, passando por pipeline, metas mensais, tarefas setoriais, alertas, importação e exportação. A separação por perfis permite que direção, gestão e departamentos trabalhem no mesmo ambiente com experiências adequadas às suas responsabilidades.
 
 O resultado esperado é uma operação com menos dependência de planilhas, maior rastreabilidade, reuniões mais objetivas e capacidade de agir rapidamente sobre desvios de meta, gargalos do funil e tarefas atrasadas.

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
-import { fmtValor, fmtCompetencia, competenciaAtual, labelDepto, corIndicador } from '../../utils/format'
+import { classificacaoIndicador, fmtValor, fmtCompetencia, competenciaAtual, labelDepto, corIndicador } from '../../utils/format'
 
 export default function DashboardDepto() {
   const { usuario } = useAuth()
@@ -108,13 +108,14 @@ export default function DashboardDepto() {
                   <th>Realizado</th>
                   <th>Meta</th>
                   <th>Atingimento</th>
-                  <th>Status</th>
+                  <th>Classificação</th>
                   <th>Histórico 6m</th>
                 </tr>
               </thead>
               <tbody>
-                {kpis.map(ind => (
-                  <tr key={ind.id}>
+                {kpis.map(ind => {
+                  const classificacao = classificacaoIndicador(ind.percentual)
+                  return <tr key={ind.id}>
                     <td style={{ fontWeight: 500 }}>{ind.nome}</td>
                     <td className="text-muted">{ind.unidade_medida}</td>
                     <td><strong>{ind.lancamento ? fmtValor(ind.lancamento.valor_realizado, ind.unidade_medida) : '—'}</strong></td>
@@ -129,7 +130,7 @@ export default function DashboardDepto() {
                         </div>
                       )}
                     </td>
-                    <td><span className={`status-badge s-${ind.status}`}>{ind.status === 'acima' ? 'Acima' : ind.status === 'atencao' ? 'Atenção' : ind.status === 'abaixo' ? 'Abaixo' : 'Pendente'}</span></td>
+                    <td><span className={`status-badge s-${classificacao.status}`}>{classificacao.label}</span></td>
                     <td>
                       <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 24 }}>
                         {ind.historico.slice(-6).map((h, i) => {
@@ -140,7 +141,7 @@ export default function DashboardDepto() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                })}
               </tbody>
             </table>
           </div>

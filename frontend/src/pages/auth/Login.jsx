@@ -42,7 +42,7 @@ export default function Login() {
                 <div className="login-left-content">
                     <img className="login-brand-logo" src={logoLikeHome} alt="LikeHome Intelligence" />
                     <img className="login-hero-art" src={heroLikeHome} alt="" aria-hidden="true" />
-                    <div className="login-kicker">Inteligência para hospitalidade</div>
+                    <div className="login-kicker">Inteligência para hospedagem</div>
                     <h1 className="login-brand-title">Decisões melhores começam com uma visão mais clara.</h1>
                     <p className="login-brand-sub">Indicadores, operação e estratégia conectados em um só lugar.</p>
                     <ul className="login-features">

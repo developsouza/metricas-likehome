@@ -61,6 +61,15 @@ export function corIndicador(status) {
   }
 }
 
+export function classificacaoIndicador(percentual) {
+  if (percentual == null || Number.isNaN(Number(percentual))) {
+    return { status: 'sem_lancamento', label: 'Pendente' }
+  }
+  if (Number(percentual) >= 100) return { status: 'acima', label: 'Acima' }
+  if (Number(percentual) >= 80) return { status: 'atencao', label: 'Atenção' }
+  return { status: 'abaixo', label: 'Abaixo' }
+}
+
 export function labelStatus(s) {
   const m = { Prospeccao: 'Prospecção', Reuniao: 'Reunião', Fechamento: 'Fechamento', Integracao: 'Integração', Ativo: 'Ativo', Baixa: 'Baixa/Inativo' }
   return m[s] || s

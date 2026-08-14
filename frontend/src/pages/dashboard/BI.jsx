@@ -20,7 +20,7 @@ import {
     PolarAngleAxis,
 } from "recharts";
 import api from "../../services/api";
-import { fmtValor, fmtCompetencia, labelDepto, deptos } from "../../utils/format";
+import { classificacaoIndicador, fmtValor, fmtCompetencia, labelDepto, deptos } from "../../utils/format";
 import Paginacao from "../../components/Paginacao";
 
 const DEPTOS = deptos();
@@ -435,19 +435,20 @@ export default function BI() {
                                         <th>Realizado</th>
                                         <th>Meta</th>
                                         <th>Atingimento</th>
+                                        <th>Classificação</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {krisPaginados.length === 0 ? (
                                         <tr>
-                                            <td colSpan={5} style={{ textAlign: "center", padding: 32, color: "var(--neutral-400)" }}>
+                                            <td colSpan={6} style={{ textAlign: "center", padding: 32, color: "var(--neutral-400)" }}>
                                                 Nenhum KRI lançado para {labelDepto(deptoAtivo)}
                                             </td>
                                         </tr>
                                     ) : (
                                         krisPaginados.map((l, i) => {
                                             const pct = l.meta > 0 ? Math.round((l.valor_realizado / l.meta) * 100 * 10) / 10 : null;
-                                            const status = pct === null ? "sem_lancamento" : pct >= 100 ? "acima" : pct >= 80 ? "atencao" : "abaixo";
+                                            const classificacao = classificacaoIndicador(pct);
                                             return (
                                                 <tr key={i}>
                                                     <td className="text-muted">{fmtCompetencia(l.competencia)}</td>
@@ -463,9 +464,9 @@ export default function BI() {
                                                                     style={{
                                                                         fontWeight: 600,
                                                                         color:
-                                                                            status === "acima"
+                                                                            classificacao.status === "acima"
                                                                                 ? "var(--success)"
-                                                                                : status === "atencao"
+                                                                                : classificacao.status === "atencao"
                                                                                   ? "var(--warning)"
                                                                                   : "var(--danger)",
                                                                     }}
@@ -473,16 +474,10 @@ export default function BI() {
                                                                     {pct}%
                                                                 </span>
                                                             )}
-                                                            <span className={`status-badge s-${status}`}>
-                                                                {status === "acima"
-                                                                    ? "✓ Acima"
-                                                                    : status === "atencao"
-                                                                      ? "⚡ Atenção"
-                                                                      : status === "abaixo"
-                                                                        ? "✕ Abaixo"
-                                                                        : "—"}
-                                                            </span>
                                                         </div>
+                                                    </td>
+                                                    <td>
+                                                        <span className={`status-badge s-${classificacao.status}`}>{classificacao.label}</span>
                                                     </td>
                                                 </tr>
                                             );
