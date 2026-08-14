@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../../services/api'
+import SortableHeader from '../../components/SortableHeader'
+import { useOrdenacao } from '../../utils/table'
 import { labelDepto, deptos } from '../../utils/format'
 
 function Modal({ user, onClose, onSave }) {
@@ -84,6 +86,7 @@ export default function Usuarios() {
     await api.delete(`/usuarios/${id}`)
     carregar()
   }
+  const { itensOrdenados, ordenacao, direcao, toggleOrdem } = useOrdenacao(lista)
 
   return (
     <div>
@@ -96,9 +99,9 @@ export default function Usuarios() {
           {loading ? <div className="loading">Carregando...</div> : (
             <div className="table-container">
               <table>
-                <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Departamento</th><th>Status</th><th>Ações</th></tr></thead>
+                <thead><tr><SortableHeader label="Nome" field="nome" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} /><SortableHeader label="E-mail" field="email" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} /><SortableHeader label="Perfil" field="perfil" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} /><SortableHeader label="Departamento" field="departamento" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} /><SortableHeader label="Status" field="ativo" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} /><th>Ações</th></tr></thead>
                 <tbody>
-                  {lista.map(u => (
+                  {itensOrdenados.map(u => (
                     <tr key={u.id} style={{ opacity: u.ativo ? 1 : 0.5 }}>
                       <td style={{ fontWeight: 600 }}>{u.nome}</td>
                       <td className="text-muted">{u.email}</td>

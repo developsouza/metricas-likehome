@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../../services/api";
 import { fmtData, labelStatus } from "../../utils/format";
 import Paginacao from "../../components/Paginacao";
+import SortableHeader from "../../components/SortableHeader";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -648,16 +649,14 @@ export default function Unidades() {
                                             { label: "Ativação", campo: "data_ativacao" },
                                             { label: "Responsável", campo: "responsavel_nome" },
                                         ].map(({ label, campo }) => (
-                                            <th
+                                            <SortableHeader
                                                 key={campo}
-                                                onClick={() => toggleOrdem(campo)}
-                                                style={{ cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}
-                                            >
-                                                {label}
-                                                <span style={{ marginLeft: 4, opacity: ordenacao === campo ? 1 : 0.3, fontSize: "0.75em" }}>
-                                                    {ordenacao === campo ? (direcao === "asc" ? "▲" : "▼") : "⇅"}
-                                                </span>
-                                            </th>
+                                                label={label}
+                                                field={campo}
+                                                sortField={ordenacao}
+                                                sortDirection={direcao}
+                                                onSort={toggleOrdem}
+                                            />
                                         ))}
                                         <th>Ações</th>
                                     </tr>

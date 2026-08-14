@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 import Paginacao from "../../components/Paginacao";
+import SortableHeader from "../../components/SortableHeader";
+import { useOrdenacao } from "../../utils/table";
 
 const POR_PAGINA = 20;
 
@@ -113,8 +115,9 @@ export default function Proprietarios() {
           )
         : lista;
 
-    const totalPaginas = Math.max(1, Math.ceil(listaFiltrada.length / POR_PAGINA));
-    const listaPaginada = listaFiltrada.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+    const { itensOrdenados, ordenacao, direcao, toggleOrdem } = useOrdenacao(listaFiltrada);
+    const totalPaginas = Math.max(1, Math.ceil(itensOrdenados.length / POR_PAGINA));
+    const listaPaginada = itensOrdenados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
     useEffect(() => {
         setPagina(1);
@@ -163,10 +166,10 @@ export default function Proprietarios() {
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Nome</th>
-                                        <th>CPF / CNPJ</th>
-                                        <th>E-mail</th>
-                                        <th>Telefone</th>
+                                        <SortableHeader label="Nome" field="nome" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="CPF / CNPJ" field="cpf_cnpj" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="E-mail" field="email" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Telefone" field="telefone" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
                                         <th>Ações</th>
                                     </tr>
                                 </thead>

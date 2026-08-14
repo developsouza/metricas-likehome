@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { classificacaoIndicador, fmtValor, fmtCompetencia, competenciaAtual, labelDepto, deptos } from '../../utils/format'
+import SortableHeader from '../../components/SortableHeader'
+import { useOrdenacao } from '../../utils/table'
 
 function ModalLancamento({ indicador, lancamento, competencia, onClose, onSave }) {
   const [valor, setValor] = useState(lancamento?.valor_realizado ?? '')
@@ -97,8 +99,14 @@ export default function Lancamentos() {
   }
 
   // Agrupar indicadores por departamento
+  const indicadoresComDados = indicadores.map(i => {
+    const lanc = getLancamento(i.id)
+    const percentual = lanc?.meta ? Math.round(lanc.valor_realizado / lanc.meta * 100) : null
+    return { ...i, percentual, classificacao: classificacaoIndicador(percentual).label, valor_realizado: lanc?.valor_realizado, meta_periodo: lanc?.meta }
+  })
+  const { itensOrdenados, ordenacao, direcao, toggleOrdem } = useOrdenacao(indicadoresComDados)
   const indsPorDepto = {}
-  indicadores.forEach(i => {
+  itensOrdenados.forEach(i => {
     if (!indsPorDepto[i.departamento]) indsPorDepto[i.departamento] = []
     indsPorDepto[i.departamento].push(i)
   })
@@ -154,22 +162,22 @@ export default function Lancamentos() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Tipo</th>
-                      <th>Indicador</th>
-                      <th>Unidade</th>
-                      <th>Meta Padrão</th>
-                      <th>Realizado</th>
-                      <th>Meta Período</th>
-                      <th>Atingimento</th>
-                      <th>Classificação</th>
-                      <th>Observação</th>
+                      <SortableHeader label="Tipo" field="tipo" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                      <SortableHeader label="Indicador" field="nome" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                      <SortableHeader label="Unidade" field="unidade_medida" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                      <SortableHeader label="Meta Padrão" field="meta_padrao" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                      <SortableHeader label="Realizado" field="valor_realizado" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                      <SortableHeader label="Meta Período" field="meta_periodo" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                      <SortableHeader label="Atingimento" field="percentual" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                      <SortableHeader label="Classificação" field="classificacao" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                      <SortableHeader label="Observação" field="observacao" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
                       <th>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {inds.map(ind => {
                       const lanc = getLancamento(ind.id)
-                      const pct = lanc?.meta ? Math.round(lanc.valor_realizado / lanc.meta * 100) : null
+                      const pct = ind.percentual
                       const classificacao = classificacaoIndicador(pct)
                       return (
                         <tr key={ind.id} style={{ background: lanc ? '' : 'rgba(253,230,138,.06)' }}>

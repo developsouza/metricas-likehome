@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../../services/api'
+import SortableHeader from '../../components/SortableHeader'
+import { useOrdenacao } from '../../utils/table'
 import { labelDepto, deptos, fmtValor } from '../../utils/format'
 
 function Modal({ ind, onClose, onSave }) {
@@ -79,8 +81,9 @@ export default function Indicadores() {
     carregar()
   }
 
+  const { itensOrdenados, ordenacao, direcao, toggleOrdem } = useOrdenacao(lista)
   const porDepto = {}
-  lista.forEach(i => { if (!porDepto[i.departamento]) porDepto[i.departamento] = []; porDepto[i.departamento].push(i) })
+  itensOrdenados.forEach(i => { if (!porDepto[i.departamento]) porDepto[i.departamento] = []; porDepto[i.departamento].push(i) })
 
   return (
     <div>
@@ -102,7 +105,7 @@ export default function Indicadores() {
             <div className="card-body">
               <div className="table-container">
                 <table>
-                  <thead><tr><th>Tipo</th><th>Nome</th><th>Descrição</th><th>Unidade</th><th>Meta Padrão</th><th>Status</th><th>Ações</th></tr></thead>
+                  <thead><tr><SortableHeader label="Tipo" field="tipo" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} /><SortableHeader label="Nome" field="nome" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} /><SortableHeader label="Descrição" field="descricao" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} /><SortableHeader label="Unidade" field="unidade_medida" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} /><SortableHeader label="Meta Padrão" field="meta_padrao" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} /><SortableHeader label="Status" field="ativo" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} /><th>Ações</th></tr></thead>
                   <tbody>
                     {inds.map(i => (
                       <tr key={i.id} style={{ opacity: i.ativo ? 1 : 0.5 }}>

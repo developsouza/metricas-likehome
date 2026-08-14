@@ -3,6 +3,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { classificacaoIndicador, fmtValor, fmtCompetencia, competenciaAtual, labelDepto, corIndicador } from '../../utils/format'
+import SortableHeader from '../../components/SortableHeader'
+import { useOrdenacao } from '../../utils/table'
 
 export default function DashboardDepto() {
   const { usuario } = useAuth()
@@ -10,6 +12,7 @@ export default function DashboardDepto() {
   const [comp, setComp] = useState(competenciaAtual())
   const [loading, setLoading] = useState(true)
   const [selecionado, setSelecionado] = useState(null)
+  const ordenacaoKpis = useOrdenacao((data?.indicadores || []).filter(i => i.tipo === 'KPI'))
 
   const depto = usuario?.departamento
 
@@ -35,7 +38,7 @@ export default function DashboardDepto() {
   if (!data) return null
 
   const kris = data.indicadores.filter(i => i.tipo === 'KRI')
-  const kpis = data.indicadores.filter(i => i.tipo === 'KPI')
+  const { itensOrdenados: kpisOrdenados, ordenacao, direcao, toggleOrdem } = ordenacaoKpis
   const indSelecionado = selecionado ? data.indicadores.find(i => i.id === selecionado) : null
 
   return (
@@ -103,17 +106,17 @@ export default function DashboardDepto() {
             <table>
               <thead>
                 <tr>
-                  <th>Indicador</th>
-                  <th>Unidade</th>
-                  <th>Realizado</th>
-                  <th>Meta</th>
-                  <th>Atingimento</th>
-                  <th>Classificação</th>
+                  <SortableHeader label="Indicador" field="nome" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                  <SortableHeader label="Unidade" field="unidade_medida" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                  <SortableHeader label="Realizado" field="lancamento.valor_realizado" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                  <SortableHeader label="Meta" field="lancamento.meta" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                  <SortableHeader label="Atingimento" field="percentual" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                  <SortableHeader label="Classificação" field="status" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
                   <th>Histórico 6m</th>
                 </tr>
               </thead>
               <tbody>
-                {kpis.map(ind => {
+                {kpisOrdenados.map(ind => {
                   const classificacao = classificacaoIndicador(ind.percentual)
                   return <tr key={ind.id}>
                     <td style={{ fontWeight: 500 }}>{ind.nome}</td>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 import Paginacao from "../../components/Paginacao";
+import SortableHeader from "../../components/SortableHeader";
+import { useOrdenacao } from "../../utils/table";
 
 const POR_PAGINA = 20;
 
@@ -92,8 +94,9 @@ export default function Empreendimentos() {
     const listaFiltrada = busca
         ? lista.filter((e) => e.nome?.toLowerCase().includes(busca.toLowerCase()) || e.cidade?.toLowerCase().includes(busca.toLowerCase()))
         : lista;
-    const totalPaginasEmp = Math.max(1, Math.ceil(listaFiltrada.length / POR_PAGINA_EMP));
-    const listaPaginadaEmp = listaFiltrada.slice((pagina - 1) * POR_PAGINA_EMP, pagina * POR_PAGINA_EMP);
+    const { itensOrdenados, ordenacao, direcao, toggleOrdem } = useOrdenacao(listaFiltrada);
+    const totalPaginasEmp = Math.max(1, Math.ceil(itensOrdenados.length / POR_PAGINA_EMP));
+    const listaPaginadaEmp = itensOrdenados.slice((pagina - 1) * POR_PAGINA_EMP, pagina * POR_PAGINA_EMP);
     useEffect(() => {
         setPagina(1);
     }, [busca]);
@@ -130,13 +133,13 @@ export default function Empreendimentos() {
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Nome</th>
-                                        <th>Endereço</th>
-                                        <th>Cidade</th>
-                                        <th>Estado</th>
-                                        <th>Unidades</th>
-                                        <th>Ativas</th>
-                                        <th>Status</th>
+                                        <SortableHeader label="Nome" field="nome" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Endereço" field="endereco" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Cidade" field="cidade" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Estado" field="estado" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Unidades" field="total_unidades" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Ativas" field="unidades_ativas" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Status" field="ativo" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
@@ -207,7 +210,7 @@ export default function Empreendimentos() {
                             <Paginacao
                                 pagina={pagina}
                                 totalPaginas={totalPaginasEmp}
-                                total={listaFiltrada.length}
+                                total={itensOrdenados.length}
                                 porPagina={POR_PAGINA_EMP}
                                 onChange={setPagina}
                             />

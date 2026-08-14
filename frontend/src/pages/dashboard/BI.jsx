@@ -22,6 +22,8 @@ import {
 import api from "../../services/api";
 import { classificacaoIndicador, fmtValor, fmtCompetencia, labelDepto, deptos } from "../../utils/format";
 import Paginacao from "../../components/Paginacao";
+import SortableHeader from "../../components/SortableHeader";
+import { useOrdenacao } from "../../utils/table";
 
 const DEPTOS = deptos();
 const CORES_DEPTO = ["#0f4c81", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"];
@@ -36,6 +38,11 @@ export default function BI() {
     const [fim, setFim] = useState(new Date().toISOString().substring(0, 7));
     const [deptoAtivo, setDeptoAtivo] = useState("Comercial");
     const [paginaKri, setPaginaKri] = useState(1);
+    const portfolioOrdenacao = useOrdenacao(data?.rankEmpreendimentos || []);
+    const kriOrdenacao = useOrdenacao((data?.lancamentos || []).map((l) => {
+        const percentual = l.meta > 0 ? Math.round((l.valor_realizado / l.meta) * 100 * 10) / 10 : null;
+        return { ...l, percentual, classificacao: classificacaoIndicador(percentual).label };
+    }));
 
     const carregar = useCallback(async () => {
         setLoading(true);
@@ -91,7 +98,7 @@ export default function BI() {
         }));
 
     // KRIs por depto (filtrado)
-    const krisDepto = lancamentos.filter((l) => l.departamento === deptoAtivo && l.tipo === "KRI");
+    const krisDepto = kriOrdenacao.itensOrdenados.filter((l) => l.departamento === deptoAtivo && l.tipo === "KRI");
     const krisDeptoTotal = krisDepto.length;
     const krisTotalPaginas = Math.max(1, Math.ceil(krisDeptoTotal / POR_PAGINA_KRI));
     const krisPaginados = krisDepto.slice((paginaKri - 1) * POR_PAGINA_KRI, paginaKri * POR_PAGINA_KRI);
@@ -350,17 +357,17 @@ export default function BI() {
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Empreendimento</th>
-                                    <th>Cidade</th>
-                                    <th style={{ textAlign: "center" }}>Total</th>
-                                    <th style={{ textAlign: "center" }}>Ativas</th>
-                                    <th style={{ textAlign: "center" }}>Integração</th>
-                                    <th style={{ textAlign: "center" }}>Fechamento</th>
-                                    <th style={{ textAlign: "center" }}>Baixas</th>
+                                    <SortableHeader label="Empreendimento" field="nome" sortField={portfolioOrdenacao.ordenacao} sortDirection={portfolioOrdenacao.direcao} onSort={portfolioOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Cidade" field="cidade" sortField={portfolioOrdenacao.ordenacao} sortDirection={portfolioOrdenacao.direcao} onSort={portfolioOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Total" field="total_unidades" sortField={portfolioOrdenacao.ordenacao} sortDirection={portfolioOrdenacao.direcao} onSort={portfolioOrdenacao.toggleOrdem} style={{ textAlign: "center" }} />
+                                    <SortableHeader label="Ativas" field="ativas" sortField={portfolioOrdenacao.ordenacao} sortDirection={portfolioOrdenacao.direcao} onSort={portfolioOrdenacao.toggleOrdem} style={{ textAlign: "center" }} />
+                                    <SortableHeader label="Integração" field="integracao" sortField={portfolioOrdenacao.ordenacao} sortDirection={portfolioOrdenacao.direcao} onSort={portfolioOrdenacao.toggleOrdem} style={{ textAlign: "center" }} />
+                                    <SortableHeader label="Fechamento" field="fechamento" sortField={portfolioOrdenacao.ordenacao} sortDirection={portfolioOrdenacao.direcao} onSort={portfolioOrdenacao.toggleOrdem} style={{ textAlign: "center" }} />
+                                    <SortableHeader label="Baixas" field="baixas" sortField={portfolioOrdenacao.ordenacao} sortDirection={portfolioOrdenacao.direcao} onSort={portfolioOrdenacao.toggleOrdem} style={{ textAlign: "center" }} />
                                 </tr>
                             </thead>
                             <tbody>
-                                {rankEmpreendimentos
+                                {portfolioOrdenacao.itensOrdenados
                                     .filter((e) => e.total_unidades > 0)
                                     .map((e, i) => (
                                         <tr key={i}>
@@ -430,12 +437,12 @@ export default function BI() {
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Competência</th>
-                                        <th>Indicador</th>
-                                        <th>Realizado</th>
-                                        <th>Meta</th>
-                                        <th>Atingimento</th>
-                                        <th>Classificação</th>
+                                        <SortableHeader label="Competência" field="competencia" sortField={kriOrdenacao.ordenacao} sortDirection={kriOrdenacao.direcao} onSort={kriOrdenacao.toggleOrdem} />
+                                        <SortableHeader label="Indicador" field="nome" sortField={kriOrdenacao.ordenacao} sortDirection={kriOrdenacao.direcao} onSort={kriOrdenacao.toggleOrdem} />
+                                        <SortableHeader label="Realizado" field="valor_realizado" sortField={kriOrdenacao.ordenacao} sortDirection={kriOrdenacao.direcao} onSort={kriOrdenacao.toggleOrdem} />
+                                        <SortableHeader label="Meta" field="meta" sortField={kriOrdenacao.ordenacao} sortDirection={kriOrdenacao.direcao} onSort={kriOrdenacao.toggleOrdem} />
+                                        <SortableHeader label="Atingimento" field="percentual" sortField={kriOrdenacao.ordenacao} sortDirection={kriOrdenacao.direcao} onSort={kriOrdenacao.toggleOrdem} />
+                                        <SortableHeader label="Classificação" field="classificacao" sortField={kriOrdenacao.ordenacao} sortDirection={kriOrdenacao.direcao} onSort={kriOrdenacao.toggleOrdem} />
                                     </tr>
                                 </thead>
                                 <tbody>

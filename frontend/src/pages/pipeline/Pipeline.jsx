@@ -3,6 +3,8 @@ import api from "../../services/api";
 import { fmtData, labelStatus } from "../../utils/format";
 import { useAuth } from "../../contexts/AuthContext";
 import Paginacao from "../../components/Paginacao";
+import SortableHeader from "../../components/SortableHeader";
+import { useOrdenacao } from "../../utils/table";
 
 const STATUS_LIST = ["Prospeccao", "Reuniao", "Fechamento", "Integracao", "Ativo", "Baixa"];
 const POR_PAGINA = 20;
@@ -252,8 +254,9 @@ export default function Pipeline() {
         );
     });
 
-    const totalPaginas = Math.max(1, Math.ceil(unidadesFiltradas.length / POR_PAGINA));
-    const unidadesPaginadas = unidadesFiltradas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+    const { itensOrdenados, ordenacao, direcao, toggleOrdem } = useOrdenacao(unidadesFiltradas);
+    const totalPaginas = Math.max(1, Math.ceil(itensOrdenados.length / POR_PAGINA));
+    const unidadesPaginadas = itensOrdenados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
     // Reset página ao mudar filtros
     useEffect(() => {
@@ -368,17 +371,17 @@ export default function Pipeline() {
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Unidade</th>
-                                        <th>Empreendimento</th>
-                                        <th>Tipo</th>
-                                        <th>Proprietário</th>
-                                        <th>Responsável</th>
-                                        <th>Status</th>
-                                        <th>Data Prospecção</th>
-                                        <th>Data Reunião</th>
-                                        <th>Data Fechamento</th>
-                                        <th>Data Integração</th>
-                                        <th>Data Ativação</th>
+                                        <SortableHeader label="Unidade" field="numero" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Empreendimento" field="empreendimento_nome" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Tipo" field="tipo" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Proprietário" field="proprietario_nome" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Responsável" field="responsavel_nome" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Status" field="status" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Data Prospecção" field="data_prospeccao" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Data Reunião" field="data_reuniao" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Data Fechamento" field="data_fechamento" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Data Integração" field="data_integracao" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
+                                        <SortableHeader label="Data Ativação" field="data_ativacao" sortField={ordenacao} sortDirection={direcao} onSort={toggleOrdem} />
                                         {isAdmin && <th>Ações</th>}
                                     </tr>
                                 </thead>
@@ -444,7 +447,7 @@ export default function Pipeline() {
                             <Paginacao
                                 pagina={pagina}
                                 totalPaginas={totalPaginas}
-                                total={unidadesFiltradas.length}
+                                total={itensOrdenados.length}
                                 porPagina={POR_PAGINA}
                                 onChange={setPagina}
                             />

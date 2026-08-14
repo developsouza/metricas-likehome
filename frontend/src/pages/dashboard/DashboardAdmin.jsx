@@ -3,6 +3,8 @@ import { ComposedChart, Bar, Line, BarChart, XAxis, YAxis, CartesianGrid, Toolti
 import api from "../../services/api";
 import { classificacaoIndicador, fmtValor, fmtCompetencia, fmtData, competenciaAtual, labelStatus, labelDepto } from "../../utils/format";
 import Paginacao from "../../components/Paginacao";
+import SortableHeader from "../../components/SortableHeader";
+import { useOrdenacao } from "../../utils/table";
 
 const POR_PAGINA_EMP = 15;
 
@@ -10,6 +12,7 @@ function ModalUnidades({ info, onClose }) {
     const [unidades, setUnidades] = useState([]);
     const [loading, setLoading] = useState(true);
     const overlayRef = useRef(null);
+    const unidadesOrdenacao = useOrdenacao(unidades);
 
     useEffect(() => {
         if (!info) return;
@@ -117,76 +120,16 @@ function ModalUnidades({ info, onClose }) {
                         <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 16, fontSize: 13 }}>
                             <thead>
                                 <tr style={{ background: "var(--neutral-50)" }}>
-                                    <th
-                                        style={{
-                                            padding: "8px 10px",
-                                            textAlign: "left",
-                                            fontWeight: 600,
-                                            color: "var(--text-muted)",
-                                            borderBottom: "1px solid var(--border)",
-                                        }}
-                                    >
-                                        Unidade
-                                    </th>
-                                    <th
-                                        style={{
-                                            padding: "8px 10px",
-                                            textAlign: "left",
-                                            fontWeight: 600,
-                                            color: "var(--text-muted)",
-                                            borderBottom: "1px solid var(--border)",
-                                        }}
-                                    >
-                                        Proprietário
-                                    </th>
-                                    <th
-                                        style={{
-                                            padding: "8px 10px",
-                                            textAlign: "left",
-                                            fontWeight: 600,
-                                            color: "var(--text-muted)",
-                                            borderBottom: "1px solid var(--border)",
-                                        }}
-                                    >
-                                        Responsável
-                                    </th>
-                                    <th
-                                        style={{
-                                            padding: "8px 10px",
-                                            textAlign: "left",
-                                            fontWeight: 600,
-                                            color: "var(--text-muted)",
-                                            borderBottom: "1px solid var(--border)",
-                                        }}
-                                    >
-                                        Status
-                                    </th>
-                                    <th
-                                        style={{
-                                            padding: "8px 10px",
-                                            textAlign: "left",
-                                            fontWeight: 600,
-                                            color: "var(--text-muted)",
-                                            borderBottom: "1px solid var(--border)",
-                                        }}
-                                    >
-                                        Contrato
-                                    </th>
-                                    <th
-                                        style={{
-                                            padding: "8px 10px",
-                                            textAlign: "left",
-                                            fontWeight: 600,
-                                            color: "var(--text-muted)",
-                                            borderBottom: "1px solid var(--border)",
-                                        }}
-                                    >
-                                        Ativação
-                                    </th>
+                                    <SortableHeader label="Unidade" field="numero" sortField={unidadesOrdenacao.ordenacao} sortDirection={unidadesOrdenacao.direcao} onSort={unidadesOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Proprietário" field="proprietario_nome" sortField={unidadesOrdenacao.ordenacao} sortDirection={unidadesOrdenacao.direcao} onSort={unidadesOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Responsável" field="responsavel_nome" sortField={unidadesOrdenacao.ordenacao} sortDirection={unidadesOrdenacao.direcao} onSort={unidadesOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Status" field="status" sortField={unidadesOrdenacao.ordenacao} sortDirection={unidadesOrdenacao.direcao} onSort={unidadesOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Contrato" field="data_fechamento" sortField={unidadesOrdenacao.ordenacao} sortDirection={unidadesOrdenacao.direcao} onSort={unidadesOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Ativação" field="data_ativacao" sortField={unidadesOrdenacao.ordenacao} sortDirection={unidadesOrdenacao.direcao} onSort={unidadesOrdenacao.toggleOrdem} />
                                 </tr>
                             </thead>
                             <tbody>
-                                {unidades.map((u, i) => (
+                                {unidadesOrdenacao.itensOrdenados.map((u, i) => (
                                     <tr key={u.id} style={{ background: i % 2 === 0 ? "var(--surface)" : "var(--neutral-50)" }}>
                                         <td style={{ padding: "7px 10px", borderBottom: "1px solid #f3f4f6", fontWeight: 600 }}>{u.numero}</td>
                                         <td style={{ padding: "7px 10px", borderBottom: "1px solid #f3f4f6" }}>
@@ -272,6 +215,8 @@ export default function DashboardAdmin() {
     const [loading, setLoading] = useState(true);
     const [paginaEmp, setPaginaEmp] = useState(1);
     const [modalInfo, setModalInfo] = useState(null);
+    const kriOrdenacao = useOrdenacao((data?.krisPorDepto || []).map((k) => ({ ...k, classificacao: classificacaoIndicador(k.percentual).label })));
+    const empreendimentoOrdenacao = useOrdenacao(data?.empreendimentos || []);
 
     const abrirModal = (emp, status) => setModalInfo({ empId: emp.id, empNome: emp.nome, status: status || null });
 
@@ -339,7 +284,7 @@ export default function DashboardAdmin() {
         .slice(0, 15)
         .map((e) => ({ name: e.nome.length > 18 ? e.nome.substring(0, 18) + "…" : e.nome, ativas: e.ativas }));
     // Empreendimentos com paginação para a tabela
-    const empsComUnidades = empreendimentos.filter((e) => e.total_unidades > 0);
+    const empsComUnidades = empreendimentoOrdenacao.itensOrdenados.filter((e) => e.total_unidades > 0);
     const totalPaginasEmp = Math.max(1, Math.ceil(empsComUnidades.length / POR_PAGINA_EMP));
     const empsPaginados = empsComUnidades.slice((paginaEmp - 1) * POR_PAGINA_EMP, paginaEmp * POR_PAGINA_EMP);
     // KRIs por depto
@@ -531,12 +476,12 @@ export default function DashboardAdmin() {
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Departamento</th>
-                                    <th>Indicador</th>
-                                    <th>Realizado</th>
-                                    <th>Meta</th>
-                                    <th>Atingimento</th>
-                                    <th>Classificação</th>
+                                    <SortableHeader label="Departamento" field="departamento" sortField={kriOrdenacao.ordenacao} sortDirection={kriOrdenacao.direcao} onSort={kriOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Indicador" field="nome" sortField={kriOrdenacao.ordenacao} sortDirection={kriOrdenacao.direcao} onSort={kriOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Realizado" field="valor_realizado" sortField={kriOrdenacao.ordenacao} sortDirection={kriOrdenacao.direcao} onSort={kriOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Meta" field="meta" sortField={kriOrdenacao.ordenacao} sortDirection={kriOrdenacao.direcao} onSort={kriOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Atingimento" field="percentual" sortField={kriOrdenacao.ordenacao} sortDirection={kriOrdenacao.direcao} onSort={kriOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Classificação" field="classificacao" sortField={kriOrdenacao.ordenacao} sortDirection={kriOrdenacao.direcao} onSort={kriOrdenacao.toggleOrdem} />
                                 </tr>
                             </thead>
                             <tbody>
@@ -548,7 +493,7 @@ export default function DashboardAdmin() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    krisPorDepto.map((k, i) => {
+                                    kriOrdenacao.itensOrdenados.map((k, i) => {
                                         const classificacao = classificacaoIndicador(k.percentual);
                                         return (
                                             <tr key={i}>
@@ -629,12 +574,12 @@ export default function DashboardAdmin() {
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Empreendimento</th>
-                                    <th style={{ textAlign: "center" }}>Total</th>
-                                    <th style={{ textAlign: "center" }}>Ativas</th>
-                                    <th style={{ textAlign: "center" }}>Integração</th>
-                                    <th style={{ textAlign: "center" }}>Fechamento</th>
-                                    <th style={{ textAlign: "center" }}>Baixas</th>
+                                    <SortableHeader label="Empreendimento" field="nome" sortField={empreendimentoOrdenacao.ordenacao} sortDirection={empreendimentoOrdenacao.direcao} onSort={empreendimentoOrdenacao.toggleOrdem} />
+                                    <SortableHeader label="Total" field="total_unidades" sortField={empreendimentoOrdenacao.ordenacao} sortDirection={empreendimentoOrdenacao.direcao} onSort={empreendimentoOrdenacao.toggleOrdem} style={{ textAlign: "center" }} />
+                                    <SortableHeader label="Ativas" field="ativas" sortField={empreendimentoOrdenacao.ordenacao} sortDirection={empreendimentoOrdenacao.direcao} onSort={empreendimentoOrdenacao.toggleOrdem} style={{ textAlign: "center" }} />
+                                    <SortableHeader label="Integração" field="integracao" sortField={empreendimentoOrdenacao.ordenacao} sortDirection={empreendimentoOrdenacao.direcao} onSort={empreendimentoOrdenacao.toggleOrdem} style={{ textAlign: "center" }} />
+                                    <SortableHeader label="Fechamento" field="fechamento" sortField={empreendimentoOrdenacao.ordenacao} sortDirection={empreendimentoOrdenacao.direcao} onSort={empreendimentoOrdenacao.toggleOrdem} style={{ textAlign: "center" }} />
+                                    <SortableHeader label="Baixas" field="baixas" sortField={empreendimentoOrdenacao.ordenacao} sortDirection={empreendimentoOrdenacao.direcao} onSort={empreendimentoOrdenacao.toggleOrdem} style={{ textAlign: "center" }} />
                                 </tr>
                             </thead>
                             <tbody>
