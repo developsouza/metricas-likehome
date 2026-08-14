@@ -49,10 +49,11 @@ export default function Layout({ children }) {
                             <span className="topbar-title">{title}</span>
                         </div>
                     </div>
+                    <div className="topbar-motivacao" title={`${fraseMotivacional.texto} ${fraseMotivacional.complemento}`}>
+                        <span className="topbar-motivacao-frase">“{fraseMotivacional.texto}”</span>
+                        <span className="topbar-motivacao-complemento">- {fraseMotivacional.complemento}</span>
+                    </div>
                     <div className="topbar-right">
-                        <span className="topbar-motivacao" title={fraseMotivacional}>
-                            {fraseMotivacional}
-                        </span>
                         <span className="topbar-date">
                             {new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                         </span>

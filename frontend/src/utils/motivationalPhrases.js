@@ -88,11 +88,22 @@ const FRASES = MENSAGENS_BASE.flatMap((mensagem) => COMPLEMENTOS.map((complement
 const CHAVE_SESSAO = "lh-frase-motivacional";
 
 export function sortearFraseMotivacional() {
-  const frase = FRASES[Math.floor(Math.random() * FRASES.length)];
-  sessionStorage.setItem(CHAVE_SESSAO, frase);
+  const indice = Math.floor(Math.random() * FRASES.length);
+  const frase = {
+    texto: MENSAGENS_BASE[Math.floor(indice / COMPLEMENTOS.length)],
+    complemento: COMPLEMENTOS[indice % COMPLEMENTOS.length].trim(),
+  };
+  sessionStorage.setItem(CHAVE_SESSAO, JSON.stringify(frase));
   return frase;
 }
 
 export function obterFraseMotivacional() {
-  return sessionStorage.getItem(CHAVE_SESSAO) || sortearFraseMotivacional();
+  const fraseSalva = sessionStorage.getItem(CHAVE_SESSAO);
+  if (!fraseSalva) return sortearFraseMotivacional();
+  try {
+    const frase = JSON.parse(fraseSalva);
+    return frase?.texto && frase?.complemento ? frase : sortearFraseMotivacional();
+  } catch {
+    return sortearFraseMotivacional();
+  }
 }
