@@ -1,5 +1,5 @@
 const { db } = require("../database");
-const { DEPARTAMENTOS, STATUS_ATIVIDADE, PRIORIDADES_ATIVIDADE } = require("../constants");
+const { DEPARTAMENTOS_ATIVIDADE, STATUS_ATIVIDADE, PRIORIDADES_ATIVIDADE } = require("../constants");
 
 const ESTRATEGICOS = new Set(["admin", "analise_gestao"]);
 const CAMPOS_EDITAVEIS = ["titulo", "descricao", "status", "prioridade", "responsavel_id", "prazo"];
@@ -17,7 +17,7 @@ function atividadeBase(id) {
 }
 
 function podeVer(user, atividade) {
-  return atividade && (ESTRATEGICOS.has(user.perfil) || atividade.departamento === user.departamento);
+  return atividade && (atividade.departamento === "Admin" ? user.perfil === "admin" : ESTRATEGICOS.has(user.perfil) || atividade.departamento === user.departamento);
 }
 
 function podeEditar(user, atividade) {
@@ -31,7 +31,9 @@ function registrarHistorico(atividadeId, usuarioId, acao, campo = null, anterior
 
 function destinatarios(atividade, autorId, incluirDepartamento = false) {
   const ids = new Set([atividade.criado_por, atividade.responsavel_id]);
-  let sql = "SELECT id FROM usuarios WHERE ativo = 1 AND perfil IN ('admin','analise_gestao')";
+  let sql = atividade.departamento === "Admin"
+    ? "SELECT id FROM usuarios WHERE ativo = 1 AND perfil = 'admin'"
+    : "SELECT id FROM usuarios WHERE ativo = 1 AND perfil IN ('admin','analise_gestao')";
   const params = [];
   if (incluirDepartamento) { sql += " OR (ativo = 1 AND departamento = ?)"; params.push(atividade.departamento); }
   db.prepare(sql).all(...params).forEach((u) => ids.add(u.id));
@@ -48,7 +50,8 @@ function gerarNotificacoesAtraso(user) {
   let sql = `SELECT * FROM atividades WHERE excluida_em IS NULL AND prazo IS NOT NULL
     AND datetime(prazo)<datetime('now') AND status NOT IN ('Concluído','Cancelado')`;
   const params = [];
-  if (!ESTRATEGICOS.has(user.perfil)) { sql += " AND departamento=?"; params.push(user.departamento); }
+  if (user.perfil === "analise_gestao") sql += " AND departamento<>'Admin'";
+  else if (!ESTRATEGICOS.has(user.perfil)) { sql += " AND departamento=?"; params.push(user.departamento); }
   const existe = db.prepare("SELECT 1 FROM notificacoes WHERE usuario_id=? AND tipo='atividade_atrasada' AND referencia_tipo='atividade' AND referencia_id=?");
   const inserir = db.prepare("INSERT INTO notificacoes (usuario_id,tipo,titulo,mensagem,referencia_tipo,referencia_id) VALUES (?,'atividade_atrasada','Atividade atrasada',?,'atividade',?)");
   for (const atividade of db.prepare(sql).all(...params)) {
@@ -59,13 +62,15 @@ function gerarNotificacoesAtraso(user) {
 }
 
 function listar(req, res) {
+  if (req.query.departamento === "Admin" && req.user.perfil !== "admin") return res.status(403).json({ error: "A área Admin é exclusiva para administradores" });
   gerarNotificacoesAtraso(req.user);
   let sql = `SELECT a.*, c.nome criado_por_nome, r.nome responsavel_nome,
     CASE WHEN a.prazo IS NOT NULL AND datetime(a.prazo) < datetime('now') AND a.status NOT IN ('Concluído','Cancelado') THEN 1 ELSE 0 END atrasada,
     (SELECT COUNT(*) FROM atividades_comentarios ac WHERE ac.atividade_id=a.id) comentarios_total
     FROM atividades a JOIN usuarios c ON c.id=a.criado_por LEFT JOIN usuarios r ON r.id=a.responsavel_id WHERE a.excluida_em IS NULL`;
   const params = [];
-  if (!ESTRATEGICOS.has(req.user.perfil)) { sql += " AND a.departamento=?"; params.push(req.user.departamento); }
+  if (req.user.perfil === "analise_gestao") sql += " AND a.departamento<>'Admin'";
+  else if (!ESTRATEGICOS.has(req.user.perfil)) { sql += " AND a.departamento=?"; params.push(req.user.departamento); }
   const filtros = [
     ["departamento", "a.departamento"], ["status", "a.status"], ["prioridade", "a.prioridade"],
     ["responsavel_id", "a.responsavel_id"], ["criado_por", "a.criado_por"]
@@ -90,9 +95,12 @@ function criar(req, res) {
   if (req.user.perfil === "analise_gestao") return res.status(403).json({ error: "Este perfil acompanha e comenta atividades, mas não as cadastra" });
   const departamento = req.user.perfil === "admin" ? req.body.departamento : req.user.departamento;
   if (!titulo?.trim() || !departamento) return res.status(400).json({ error: "Título e departamento são obrigatórios" });
-  if (!DEPARTAMENTOS.includes(departamento) || !STATUS_ATIVIDADE.includes(status) || !PRIORIDADES_ATIVIDADE.includes(prioridade)) return res.status(400).json({ error: "Departamento, status ou prioridade inválido" });
+  if (!DEPARTAMENTOS_ATIVIDADE.includes(departamento) || !STATUS_ATIVIDADE.includes(status) || !PRIORIDADES_ATIVIDADE.includes(prioridade)) return res.status(400).json({ error: "Departamento, status ou prioridade inválido" });
+  if (departamento === "Admin" && req.user.perfil !== "admin") return res.status(403).json({ error: "A área Admin é exclusiva para administradores" });
   if (responsavel_id) {
-    const responsavel = db.prepare("SELECT id FROM usuarios WHERE id=? AND ativo=1 AND departamento=?").get(responsavel_id, departamento);
+    const responsavel = departamento === "Admin"
+      ? db.prepare("SELECT id FROM usuarios WHERE id=? AND ativo=1 AND perfil='admin'").get(responsavel_id)
+      : db.prepare("SELECT id FROM usuarios WHERE id=? AND ativo=1 AND departamento=?").get(responsavel_id, departamento);
     if (!responsavel) return res.status(400).json({ error: "Responsável inválido para o departamento" });
   }
   db.exec("BEGIN");
@@ -116,7 +124,9 @@ function atualizar(req, res) {
   for (const campo of CAMPOS_EDITAVEIS) if (Object.hasOwn(req.body, campo)) novo[campo] = req.body[campo] === "" ? null : req.body[campo];
   if (!novo.titulo?.trim() || !STATUS_ATIVIDADE.includes(novo.status) || !PRIORIDADES_ATIVIDADE.includes(novo.prioridade)) return res.status(400).json({ error: "Título, status ou prioridade inválido" });
   if (novo.responsavel_id) {
-    const responsavel = db.prepare("SELECT id FROM usuarios WHERE id=? AND ativo=1 AND departamento=?").get(novo.responsavel_id, atual.departamento);
+    const responsavel = atual.departamento === "Admin"
+      ? db.prepare("SELECT id FROM usuarios WHERE id=? AND ativo=1 AND perfil='admin'").get(novo.responsavel_id)
+      : db.prepare("SELECT id FROM usuarios WHERE id=? AND ativo=1 AND departamento=?").get(novo.responsavel_id, atual.departamento);
     if (!responsavel) return res.status(400).json({ error: "Responsável inválido para o departamento" });
   }
   const alterados = CAMPOS_EDITAVEIS.filter((c) => String(atual[c] ?? "") !== String(novo[c] ?? ""));
@@ -173,7 +183,11 @@ function historico(req, res) {
 
 function responsaveis(req, res) {
   const departamento = ESTRATEGICOS.has(req.user.perfil) ? req.query.departamento : req.user.departamento;
-  if (!departamento || !DEPARTAMENTOS.includes(departamento)) return res.status(400).json({ error: "Departamento inválido" });
+  if (!departamento || !DEPARTAMENTOS_ATIVIDADE.includes(departamento)) return res.status(400).json({ error: "Departamento inválido" });
+  if (departamento === "Admin") {
+    if (req.user.perfil !== "admin") return res.status(403).json({ error: "A área Admin é exclusiva para administradores" });
+    return res.json(db.prepare("SELECT id,nome,departamento FROM usuarios WHERE ativo=1 AND perfil='admin' ORDER BY nome").all());
+  }
   res.json(db.prepare("SELECT id,nome,departamento FROM usuarios WHERE ativo=1 AND departamento=? ORDER BY nome").all(departamento));
 }
 

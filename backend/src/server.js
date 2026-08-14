@@ -6,6 +6,7 @@ const { initDatabase } = require("./database");
 const routes = require("./routes");
 const { notFound, errorHandler } = require("./middlewares/errors");
 const { isProduction, port, allowedOrigins } = require("./config");
+const { normalizarEstrutura } = require("./utils/textEncoding");
 
 const app = express();
 app.disable("x-powered-by");
@@ -30,6 +31,10 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
+app.use((req, _res, next) => {
+    if (req.body) req.body = normalizarEstrutura(req.body);
+    next();
+});
 
 // Inicializa banco
 initDatabase();

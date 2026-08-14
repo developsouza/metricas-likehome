@@ -1,5 +1,6 @@
 const { DatabaseSync } = require("node:sqlite");
 const path = require("path");
+const { repararTextosPersistidos } = require("./utils/textEncoding");
 require("dotenv").config();
 
 const dbPath = process.env.DB_PATH || "./database.sqlite";
@@ -11,6 +12,7 @@ db.exec("PRAGMA busy_timeout = 5000");
 
 function initDatabase() {
     migrateUsuariosPerfil();
+    migrateAtividadesDepartamento();
     db.exec(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,7 +111,7 @@ function initDatabase() {
 
     CREATE TABLE IF NOT EXISTS atividades (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      departamento TEXT NOT NULL CHECK(departamento IN ('Marketing','Comercial','Atendimento','Precificacao','Financeiro')),
+      departamento TEXT NOT NULL CHECK(departamento IN ('Marketing','Comercial','Atendimento','Precificacao','Financeiro','Admin')),
       titulo TEXT NOT NULL,
       descricao TEXT,
       status TEXT NOT NULL DEFAULT 'A Fazer' CHECK(status IN ('A Fazer','Em Andamento','Aguardando Validação','Concluído','Cancelado')),
@@ -277,6 +279,7 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_checkup_setores_diagnostico ON checkup_setores(diagnostico_id, setor);
     CREATE INDEX IF NOT EXISTS idx_checkup_acoes_diagnostico ON checkup_planos_acao(diagnostico_id, status);
   `);
+    repararTextosPersistidos(db);
 }
 
 function migrateUsuariosPerfil() {
@@ -301,6 +304,46 @@ function migrateUsuariosPerfil() {
           SELECT id,nome,email,senha_hash,perfil,departamento,ativo,criado_em FROM usuarios;
           DROP TABLE usuarios;
           ALTER TABLE usuarios_nova RENAME TO usuarios;
+        `);
+        db.exec("COMMIT");
+    } catch (error) {
+        try { db.exec("ROLLBACK"); } catch (_) {}
+        throw error;
+    } finally {
+        db.exec("PRAGMA foreign_keys = ON");
+    }
+}
+
+function migrateAtividadesDepartamento() {
+    const row = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'atividades'").get();
+    if (!row || row.sql.includes("'Admin'")) return;
+
+    db.exec("PRAGMA foreign_keys = OFF");
+    try {
+        db.exec("BEGIN IMMEDIATE");
+        db.exec(`
+          CREATE TABLE atividades_nova (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            departamento TEXT NOT NULL CHECK(departamento IN ('Marketing','Comercial','Atendimento','Precificacao','Financeiro','Admin')),
+            titulo TEXT NOT NULL,
+            descricao TEXT,
+            status TEXT NOT NULL DEFAULT 'A Fazer' CHECK(status IN ('A Fazer','Em Andamento','Aguardando Validação','Concluído','Cancelado')),
+            prioridade TEXT NOT NULL DEFAULT 'Média' CHECK(prioridade IN ('Baixa','Média','Alta','Urgente')),
+            responsavel_id INTEGER,
+            criado_por INTEGER NOT NULL,
+            criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            atualizado_por INTEGER,
+            atualizado_em DATETIME,
+            prazo DATETIME,
+            excluida_em DATETIME,
+            FOREIGN KEY (responsavel_id) REFERENCES usuarios(id),
+            FOREIGN KEY (criado_por) REFERENCES usuarios(id),
+            FOREIGN KEY (atualizado_por) REFERENCES usuarios(id)
+          );
+          INSERT INTO atividades_nova (id,departamento,titulo,descricao,status,prioridade,responsavel_id,criado_por,criado_em,atualizado_por,atualizado_em,prazo,excluida_em)
+          SELECT id,departamento,titulo,descricao,status,prioridade,responsavel_id,criado_por,criado_em,atualizado_por,atualizado_em,prazo,excluida_em FROM atividades;
+          DROP TABLE atividades;
+          ALTER TABLE atividades_nova RENAME TO atividades;
         `);
         db.exec("COMMIT");
     } catch (error) {

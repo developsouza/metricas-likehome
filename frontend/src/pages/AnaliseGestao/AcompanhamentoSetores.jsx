@@ -84,7 +84,7 @@ export default function AcompanhamentoSetores() {
   const { usuario } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const estrategico = ["admin", "analise_gestao"].includes(usuario?.perfil);
-  const departamentos = estrategico ? deptos() : [usuario?.departamento].filter(Boolean);
+  const departamentos = usuario?.perfil === "admin" ? [...deptos(), "Admin"] : estrategico ? deptos() : [usuario?.departamento].filter(Boolean);
   const [departamento, setDepartamento] = useState(departamentos[0] || "");
   const [atividades, setAtividades] = useState([]);
   const [loading, setLoading] = useState(true);

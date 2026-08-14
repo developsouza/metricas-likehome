@@ -15,6 +15,7 @@ require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const { db, initDatabase } = require("./database");
+const { decodificarBuffer } = require("./utils/textEncoding");
 
 initDatabase();
 
@@ -59,7 +60,7 @@ if (!fs.existsSync(csvPath)) {
 }
 
 console.log("📄 Lendo CSV...");
-const csvText = fs.readFileSync(csvPath, "utf-8").replace(/^\uFEFF/, ""); // remove BOM
+const csvText = decodificarBuffer(fs.readFileSync(csvPath));
 // Detecta linha de cabeçalho real (pula linhas de metadados até encontrar "Empreendimento")
 const allLines = csvText.split(/\r?\n/);
 let dataStartIdx = 5; // padrão: 5 linhas de cabeçalho

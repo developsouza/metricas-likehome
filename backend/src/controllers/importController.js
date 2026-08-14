@@ -1,4 +1,5 @@
 const { db } = require("../database");
+const { decodificarBuffer } = require("../utils/textEncoding");
 
 // ─── SCHEMAS ESPERADOS ────────────────────────────────────────────────────────
 
@@ -34,10 +35,7 @@ const SCHEMA_LANCAMENTOS = {
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 function parseCSV(buffer) {
-    const text = buffer
-        .toString("utf-8")
-        .replace(/^\uFEFF/, "")
-        .trim();
+    const text = decodificarBuffer(buffer).trim();
     const lines = text.split(/\r?\n/).filter((l) => l.trim());
     if (lines.length < 2) return { headers: [], rows: [] };
 
