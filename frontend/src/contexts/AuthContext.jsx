@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import api from '../services/api'
+import { sortearFraseMotivacional } from '../utils/motivationalPhrases'
 
 const AuthContext = createContext(null)
 
@@ -29,6 +30,7 @@ export function AuthProvider({ children }) {
     const r = await api.post('/auth/login', { email, senha })
     localStorage.setItem('token', r.data.token)
     localStorage.setItem('usuario', JSON.stringify(r.data.usuario))
+    sortearFraseMotivacional()
     setUsuario(r.data.usuario)
     return r.data.usuario
   }

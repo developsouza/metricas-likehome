@@ -3,6 +3,7 @@ import Sidebar from "./Sidebar";
 import { useLocation } from "react-router-dom";
 import NotificationBell from "./Notificacoes/NotificationBell";
 import { useAuth } from "../contexts/AuthContext";
+import { obterFraseMotivacional } from "../utils/motivationalPhrases";
 
 const titles = {
     "/dashboard": "Dashboard",
@@ -20,6 +21,7 @@ const titles = {
 export default function Layout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [theme, setTheme] = useState(() => localStorage.getItem("lh-theme") || "light");
+    const [fraseMotivacional] = useState(obterFraseMotivacional);
     const location = useLocation();
     const { usuario } = useAuth();
     const title = Object.entries(titles).find(([k]) => location.pathname.startsWith(k))?.[1] || "Métricas LikeHome";
@@ -48,6 +50,9 @@ export default function Layout({ children }) {
                         </div>
                     </div>
                     <div className="topbar-right">
+                        <span className="topbar-motivacao" title={fraseMotivacional}>
+                            {fraseMotivacional}
+                        </span>
                         <span className="topbar-date">
                             {new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                         </span>
