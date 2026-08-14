@@ -89,8 +89,8 @@ export default function DashboardDepto() {
               <XAxis dataKey="name" fontSize={11} />
               <YAxis fontSize={11} />
               <Tooltip formatter={(v) => fmtValor(v, indSelecionado.unidade_medida)} />
-              <Line type="monotone" dataKey="valor_realizado" name="Realizado" stroke="#0f4c81" strokeWidth={2} dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="meta" name="Meta" stroke="#e8a020" strokeWidth={1.5} strokeDasharray="5 5" dot={false} />
+              <Line type="monotone" dataKey="valor_realizado" name="Realizado" stroke="#F44B63" strokeWidth={2} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="meta" name="Meta" stroke="#B92F47" strokeWidth={1.5} strokeDasharray="5 5" dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

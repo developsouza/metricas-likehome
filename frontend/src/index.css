@@ -37,10 +37,10 @@
 @media (max-width: 560px) { .activity-summary { grid-template-columns: repeat(2, 1fr); }.topbar-date { display: none; } }
 
 :root {
-    --primary: #0f4c81;
-    --primary-light: #1a6ab0;
-    --primary-dark: #0a3460;
-    --accent: #e8a020;
+    --primary: #F44B63;
+    --primary-light: #FA7890;
+    --primary-dark: #B92F47;
+    --accent: #FFD9DF;
     --success: #16a34a;
     --success-light: #dcfce7;
     --warning: #d97706;
@@ -379,7 +379,7 @@ tbody tr:last-child td {
 .btn-num:not(.status-badge) {
     font-size: 14px;
     font-weight: 600;
-    color: #0f4c81;
+    color: var(--primary);
     text-decoration: underline dotted;
     text-underline-offset: 3px;
 }
@@ -392,7 +392,7 @@ tbody tr:last-child td {
     flex-shrink: 0;
 }
 .s-prospeccao {
-    background: #eff6ff;
+    background: #fff0f2;
     color: #2563eb;
 }
 .s-reuniao {

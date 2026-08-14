@@ -5,6 +5,7 @@ import Paginacao from "../../components/Paginacao";
 import SortableHeader from "../../components/SortableHeader";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { adicionarCabecalhoPdf, adicionarRodapesPdf, BRAND_RGB, carregarLogoPdf } from "../../utils/pdfBranding";
 
 const POR_PAGINA = 20;
 
@@ -90,13 +91,15 @@ function ModalExport({ dados, onClose }) {
         URL.revokeObjectURL(url);
     }
 
-    function exportarPDF() {
+    async function exportarPDF() {
         const cols = getColunasSelecionadas();
         const doc = new jsPDF({ orientation: "landscape" });
-        doc.setFontSize(14);
-        doc.text("Unidades", 14, 15);
+        const logo = await carregarLogoPdf();
+        adicionarCabecalhoPdf(doc, "EXPORTAÇÃO DE UNIDADES", logo);
+        doc.setFontSize(9);
+        doc.text(`${dados.length} registros exportados`, 14, 42);
         autoTable(doc, {
-            startY: 22,
+            startY: 48,
             head: [cols.map((c) => c.label)],
             body: dados.map((u) =>
                 cols.map((c) => {
@@ -104,9 +107,10 @@ function ModalExport({ dados, onClose }) {
                     return c.fmt ? c.fmt(val) || "" : val;
                 }),
             ),
-            styles: { fontSize: 8, cellPadding: 2 },
-            headStyles: { fillColor: [79, 70, 229] },
+            styles: { fontSize: 8, cellPadding: 2, lineColor: [226, 232, 240] },
+            headStyles: { fillColor: BRAND_RGB, textColor: 255 },
         });
+        adicionarRodapesPdf(doc);
         doc.save("unidades.pdf");
     }
 

@@ -6,6 +6,7 @@ import Paginacao from "../../components/Paginacao";
 import SortableHeader from "../../components/SortableHeader";
 import { useOrdenacao } from "../../utils/table";
 import { fmtCompetencia, fmtData } from "../../utils/format";
+import { adicionarCabecalhoPdf, adicionarRodapesPdf, BRAND_RGB, carregarLogoPdf } from "../../utils/pdfBranding";
 import { SETORES_CHECKUP, calcularSaude, camposVisiveis, classificacaoSaude } from "./checkupConfig";
 
 const POR_PAGINA = 20;
@@ -64,20 +65,77 @@ function VisaoGeral({ diagnostico, usuarios, onSaved }) {
   return <><div className="checkup-overview-grid"><div className={`checkup-health-card ${classeSaude(diagnostico.saude_geral)}`}><span>Saúde da acomodação</span><strong>{diagnostico.saude_geral == null ? "—" : `${diagnostico.saude_geral}%`}</strong><b>{diagnostico.classificacao || "Pendente"}</b><div className="progress-bar"><div className="progress-bar-fill" style={{ width: `${diagnostico.saude_geral || 0}%` }} /></div></div><div className="card"><div className="card-header"><span className="card-title">Preenchimento dos setores</span><strong>{diagnostico.preenchimento}%</strong></div><div className="card-body checkup-sector-status">{diagnostico.setores.map((s) => <div key={s.id}><span className={`checkup-dot ${s.status === "Concluído" ? "done" : ""}`} /><div><strong>{s.setor}</strong><small>{s.status === "Concluído" ? `${s.responsavel_nome} · ${new Date(`${s.atualizado_em}Z`).toLocaleString("pt-BR")}` : s.status}</small></div><b>{s.saude == null ? "—" : `${s.saude}%`}</b></div>)}</div></div></div><div className="checkup-overview-grid"><div className="card"><div className="card-header"><span className="card-title">Principais riscos identificados</span></div><div className="card-body checkup-risk-list">{!riscos.length && <div className="empty-state">Nenhum risco calculado nas respostas atuais.</div>}{riscos.slice(0, 6).map((r, i) => <div key={`${r.setor}-${i}`}><span className={r.perda >= 70 ? "critical" : r.perda >= 40 ? "high" : "medium"}>{r.perda >= 70 ? "CRÍTICO" : r.perda >= 40 ? "ALTO" : "MÉDIO"}</span><div><strong>{r.setor}</strong><p>{r.texto}</p></div></div>)}</div></div><div className="card"><div className="card-header"><span className="card-title">Indicadores imediatos</span></div><div className="card-body checkup-mini-kpis"><div><span>Planos abertos</span><strong>{diagnostico.acoes.filter((a) => !["Resolvido", "Cancelado"].includes(a.status)).length}</strong></div><div><span>Setores concluídos</span><strong>{diagnostico.setores.filter((s) => s.status === "Concluído").length}/{diagnostico.setores.length}</strong></div><div><span>Status</span><strong>{diagnostico.status}</strong></div><div><span>Período</span><strong>{fmtCompetencia(diagnostico.periodo)}</strong></div></div></div></div>{diagnostico.pode_gerenciar && diagnostico.status !== "Concluído" && <div className="card"><div className="card-header"><span className="card-title">Parecer final do analista</span></div><div className="card-body"><div className="form-grid"><div className="form-group"><label className="form-label">Status do diagnóstico</label><select className="form-control" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>{["Em elaboração", "Aguardando setores", "Em análise"].map((v) => <option key={v}>{v}</option>)}</select></div><div className="form-group"><label className="form-label">Responsável geral</label><select className="form-control" value={form.responsavel_geral_id} onChange={(e) => setForm((f) => ({ ...f, responsavel_geral_id: e.target.value }))}><option value="">Não definido</option>{usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</select></div></div>{[["parecer", "Conclusão geral da análise"], ["recomendacoes", "Recomendações estratégicas"], ["prioridades_proximo_periodo", "Prioridades do próximo período"]].map(([id, label]) => <div className="form-group" key={id}><label className="form-label">{label}</label><textarea className="form-control" rows="3" value={form[id]} onChange={(e) => setForm((f) => ({ ...f, [id]: e.target.value }))} /></div>)}<div className="modal-actions"><button className="btn btn-primary" onClick={salvarParecer}>Salvar parecer</button></div></div></div>}</>;
 }
 
-function gerarPdf(diagnostico) {
-  const doc = new jsPDF(); doc.setFontSize(16); doc.text("RELATÓRIO MENSAL DE DIAGNÓSTICO DA UNIDADE", 14, 18); doc.setFontSize(10);
-  doc.text([`Unidade: ${diagnostico.empreendimento_nome} — ${diagnostico.unidade_numero}`, `Proprietário: ${diagnostico.proprietario_nome || "Não informado"}`, `Período: ${fmtCompetencia(diagnostico.periodo)}`, `Responsável: ${diagnostico.responsavel_geral_nome || "Não definido"}`, `Saúde geral: ${diagnostico.saude_geral ?? "—"}% — ${diagnostico.classificacao}`, `Preenchimento: ${diagnostico.preenchimento}%`], 14, 28);
-  autoTable(doc, { startY: 52, head: [["Área", "Saúde", "Situação", "Responsável"]], body: diagnostico.setores.map((s) => [s.setor, s.saude == null ? "—" : `${s.saude}%`, classificacaoSaude(s.saude), s.responsavel_nome || "Pendente"]), theme: "grid" });
-  let y = doc.lastAutoTable.finalY + 10;
-  diagnostico.setores.forEach((setor) => {
-    if (y > 245) { doc.addPage(); y = 18; }
-    doc.setFontSize(12); doc.text(`${setor.setor} — ${setor.saude ?? "—"}%`, 14, y);
-    const config = SETORES_CHECKUP.find((s) => s.id === setor.setor);
-    autoTable(doc, { startY: y + 4, head: [["Item analisado", "Resposta"]], body: (config?.campos || []).filter((campo) => setor.respostas[campo.id] !== undefined && setor.respostas[campo.id] !== "").map((campo) => [campo.label, String(setor.respostas[campo.id])]), theme: "grid", styles: { fontSize: 8 } });
-    y = doc.lastAutoTable.finalY + 9;
+async function gerarPdf(diagnostico) {
+  const logo = await carregarLogoPdf();
+  const doc = new jsPDF();
+  const margem = 14;
+  const largura = doc.internal.pageSize.getWidth();
+  const altura = doc.internal.pageSize.getHeight();
+  const acoesAbertas = diagnostico.acoes.filter((acao) => !["Resolvido", "Cancelado"].includes(acao.status)).length;
+  const setoresConcluidos = diagnostico.setores.filter((setor) => setor.status === "Concluído").length;
+  const novaPagina = (titulo = "RELATÓRIO DE CHECKUP") => { doc.addPage(); adicionarCabecalhoPdf(doc, titulo, logo); return 42; };
+  const tabelaEstilos = { fontSize: 8.2, cellPadding: 3, lineColor: [226, 232, 240], lineWidth: .15, textColor: [51, 65, 85] };
+  const opcoesTabela = { theme: "grid", headStyles: { fillColor: BRAND_RGB, textColor: 255, fontStyle: "bold" }, styles: tabelaEstilos, margin: { top: 42, bottom: 18 } };
+
+  adicionarCabecalhoPdf(doc, "RELATÓRIO DE CHECKUP", logo);
+  doc.setFillColor(255, 240, 242);
+  doc.roundedRect(margem, 42, 48, 42, 3, 3, "F");
+  doc.setTextColor(...BRAND_RGB); doc.setFont("helvetica", "bold"); doc.setFontSize(8);
+  doc.text("SAÚDE GERAL", margem + 6, 51);
+  doc.setFontSize(23); doc.text(diagnostico.saude_geral == null ? "-" : `${diagnostico.saude_geral}%`, margem + 6, 66);
+  doc.setFontSize(8); doc.setTextColor(185, 47, 71); doc.text(diagnostico.classificacao || "Pendente", margem + 6, 75);
+  doc.setFillColor(252, 200, 209); doc.roundedRect(margem + 6, 78, 36, 2.5, 1, 1, "F");
+  doc.setFillColor(...BRAND_RGB); doc.roundedRect(margem + 6, 78, Math.max(0, Math.min(36, (diagnostico.saude_geral || 0) * .36)), 2.5, 1, 1, "F");
+
+  doc.setTextColor(30, 41, 59); doc.setFontSize(11); doc.text("Resumo do diagnóstico", 70, 49);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(71, 85, 105);
+  doc.text(`Unidade: ${diagnostico.empreendimento_nome} - ${diagnostico.unidade_numero}`, 70, 57);
+  doc.text(`Proprietário: ${diagnostico.proprietario_nome || "Não informado"}`, 70, 64);
+  doc.text(`Período: ${fmtCompetencia(diagnostico.periodo)}`, 70, 71);
+  doc.text(`Responsável: ${diagnostico.responsavel_geral_nome || "Não definido"}`, 70, 78);
+
+  const indicadores = [["Preenchimento", `${diagnostico.preenchimento}%`], ["Setores concluídos", `${setoresConcluidos}/${diagnostico.setores.length}`], ["Ações em aberto", String(acoesAbertas)]];
+  const larguraCard = (largura - (margem * 2) - 8) / 3;
+  indicadores.forEach(([rotulo, valor], indice) => {
+    const x = margem + indice * (larguraCard + 4);
+    doc.setFillColor(248, 250, 252); doc.roundedRect(x, 92, larguraCard, 22, 2, 2, "F");
+    doc.setTextColor(100, 116, 139); doc.setFontSize(7.5); doc.text(rotulo.toUpperCase(), x + 4, 100);
+    doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.text(valor, x + 4, 109);
   });
-  if (y > 245) { doc.addPage(); y = 18; } doc.setFontSize(12); doc.text("Plano de ação", 14, y); autoTable(doc, { startY: y + 4, head: [["Ação", "Setor", "Prioridade", "Responsável", "Prazo", "Status"]], body: diagnostico.acoes.map((a) => [a.titulo, a.setor, a.prioridade, a.responsavel_nome || "—", fmtData(a.prazo), a.status]), theme: "grid" });
-  y = doc.lastAutoTable.finalY + 10; if (y > 260) { doc.addPage(); y = 18; } doc.text("Parecer final", 14, y); doc.setFontSize(9); doc.text(doc.splitTextToSize(diagnostico.parecer || "Parecer ainda não registrado.", 180), 14, y + 6); doc.save(`checkup-${diagnostico.empreendimento_nome}-${diagnostico.unidade_numero}-${diagnostico.periodo}.pdf`);
+
+  doc.setTextColor(30, 41, 59); doc.setFontSize(11); doc.text("Visão por área", margem, 126);
+  autoTable(doc, {
+    ...opcoesTabela,
+    startY: 130,
+    head: [["Área", "Saúde", "Situação", "Responsável", "Status"]],
+    body: diagnostico.setores.map((setor) => [setor.setor, setor.saude == null ? "-" : `${setor.saude}%`, classificacaoSaude(setor.saude), setor.responsavel_nome || "Pendente", setor.status]),
+    columnStyles: { 0: { cellWidth: 42 }, 1: { cellWidth: 20, halign: "center" }, 2: { cellWidth: 31 }, 3: { cellWidth: 49 }, 4: { cellWidth: 34 } },
+  });
+
+  let y = novaPagina("ANÁLISE DETALHADA POR ÁREA");
+  diagnostico.setores.forEach((setor) => {
+    if (y > altura - 58) y = novaPagina("ANÁLISE DETALHADA POR ÁREA");
+    doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text(`${setor.setor}  |  ${setor.saude ?? "-"}%`, margem, y);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(100, 116, 139); doc.text(`Situação: ${classificacaoSaude(setor.saude)} · ${setor.status}`, margem, y + 5);
+    const config = SETORES_CHECKUP.find((s) => s.id === setor.setor);
+    const respostas = (config?.campos || []).filter((campo) => setor.respostas[campo.id] !== undefined && setor.respostas[campo.id] !== "").map((campo) => [campo.label, String(setor.respostas[campo.id])]);
+    autoTable(doc, { ...opcoesTabela, startY: y + 8, head: [["Item analisado", "Resposta"]], body: respostas.length ? respostas : [["Nenhuma resposta registrada", "-"]], columnStyles: { 0: { cellWidth: 85 }, 1: { cellWidth: 97 } } });
+    y = doc.lastAutoTable.finalY + 11;
+  });
+
+  y = novaPagina("PLANO DE AÇÃO E CONCLUSÃO");
+  doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text("Plano de ação", margem, y);
+  autoTable(doc, { ...opcoesTabela, startY: y + 5, head: [["Ação", "Setor", "Prioridade", "Responsável", "Prazo", "Status"]], body: diagnostico.acoes.length ? diagnostico.acoes.map((acao) => [acao.titulo, acao.setor, acao.prioridade, acao.responsavel_nome || "-", fmtData(acao.prazo), acao.status]) : [["Nenhuma ação registrada", "-", "-", "-", "-", "-"]], columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 28 }, 2: { cellWidth: 24 }, 3: { cellWidth: 37 }, 4: { cellWidth: 20 }, 5: { cellWidth: 22 } } });
+  y = doc.lastAutoTable.finalY + 13;
+  if (y > altura - 54) y = novaPagina("PLANO DE AÇÃO E CONCLUSÃO");
+  const linhasParecer = doc.splitTextToSize(diagnostico.parecer || "Parecer ainda não registrado.", largura - (margem * 2) - 8);
+  if (y + 14 + (linhasParecer.length * 4) > altura - 18) y = novaPagina("PLANO DE AÇÃO E CONCLUSÃO");
+  doc.setFillColor(255, 240, 242); doc.roundedRect(margem, y, largura - (margem * 2), 7, 2, 2, "F");
+  doc.setTextColor(...BRAND_RGB); doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text("Parecer final", margem + 4, y + 4.8);
+  doc.setTextColor(51, 65, 85); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  doc.text(linhasParecer, margem + 4, y + 14);
+  adicionarRodapesPdf(doc);
+  doc.save(`checkup-${diagnostico.empreendimento_nome}-${diagnostico.unidade_numero}-${diagnostico.periodo}.pdf`);
 }
 
 function DetalheCheckup({ id, usuarios, onBack }) {

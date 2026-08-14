@@ -35,7 +35,7 @@ function ModalUnidades({ info, onClose }) {
     if (!info) return null;
 
     const labelCol = info.status ? labelStatus(info.status) : "Todas";
-    const cor = info.status ? CORES_STATUS[info.status] || "#888" : "#0f4c81";
+    const cor = info.status ? CORES_STATUS[info.status] || "#888" : "#F44B63";
 
     return (
         <div
@@ -191,7 +191,7 @@ const CORES_DEPTO = {
     Precificacao: "#8b5cf6",
     Financeiro: "#ef4444",
 };
-const CORES_PIE = ["#0f4c81", "#22c55e", "#f97316", "#8b5cf6", "#ef4444", "#eab308", "#10b981", "#9ca3af"];
+const CORES_PIE = ["#F44B63", "#22c55e", "#f97316", "#8b5cf6", "#ef4444", "#eab308", "#10b981", "#9ca3af"];
 
 function KpiCard({ label, value, sub, cor, small }) {
     return (
@@ -358,7 +358,7 @@ export default function DashboardAdmin() {
                             <Legend fontSize={11} />
                             <Bar dataKey="captadas" name="Captadas" fill="#22c55e" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="perdidas" name="Saídas" fill="#9ca3af" radius={[4, 4, 0, 0]} />
-                            <Line type="monotone" dataKey="liquido" name="Líquido" stroke="#0f4c81" strokeWidth={2} dot={{ r: 3 }} />
+                            <Line type="monotone" dataKey="liquido" name="Líquido" stroke="#F44B63" strokeWidth={2} dot={{ r: 3 }} />
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
@@ -397,7 +397,7 @@ export default function DashboardAdmin() {
                             <XAxis type="number" fontSize={10} />
                             <YAxis dataKey="name" type="category" fontSize={10} width={120} />
                             <Tooltip />
-                            <Bar dataKey="ativas" name="Ativas" fill="#0f4c81" radius={[0, 4, 4, 0]} />
+                            <Bar dataKey="ativas" name="Ativas" fill="#F44B63" radius={[0, 4, 4, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

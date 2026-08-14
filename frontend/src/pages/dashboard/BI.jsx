@@ -26,8 +26,8 @@ import SortableHeader from "../../components/SortableHeader";
 import { useOrdenacao } from "../../utils/table";
 
 const DEPTOS = deptos();
-const CORES_DEPTO = ["#0f4c81", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"];
-const CORES_PIE = ["#0f4c81", "#22c55e", "#f97316", "#8b5cf6", "#ef4444", "#eab308", "#10b981", "#9ca3af"];
+const CORES_DEPTO = ["#F44B63", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"];
+const CORES_PIE = ["#F44B63", "#22c55e", "#f97316", "#8b5cf6", "#ef4444", "#eab308", "#10b981", "#9ca3af"];
 
 const POR_PAGINA_KRI = 15;
 
@@ -178,7 +178,7 @@ export default function BI() {
             {/* KPIs do portfólio */}
             <div className="dashboard-section-heading"><div><span>Visão consolidada</span><h3>Resumo do portfólio</h3></div><p>Dimensão e estágio atual das unidades acompanhadas.</p></div>
             <div className="kpi-grid dashboard-kpis">
-                <div className="kpi-card" style={{ "--kpi-color": "#0f4c81" }}>
+                <div className="kpi-card" style={{ "--kpi-color": "#F44B63" }}>
                     <div className="kpi-label">Total Portfólio</div>
                     <div className="kpi-value">{totais?.total || 0}</div>
                     <div className="kpi-meta">unidades cadastradas</div>
@@ -220,7 +220,7 @@ export default function BI() {
                             <Legend fontSize={11} />
                             <Bar dataKey="captadas" name="Captadas" fill="#22c55e" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="perdidas" name="Saídas" fill="#9ca3af" radius={[4, 4, 0, 0]} />
-                            <Line type="monotone" dataKey="liquido" name="Líquido" stroke="#0f4c81" strokeWidth={2} dot={{ r: 3 }} />
+                            <Line type="monotone" dataKey="liquido" name="Líquido" stroke="#F44B63" strokeWidth={2} dot={{ r: 3 }} />
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
@@ -311,7 +311,7 @@ export default function BI() {
                             <RadarChart data={radarData} cx="50%" cy="50%" outerRadius={90}>
                                 <PolarGrid />
                                 <PolarAngleAxis dataKey="depto" fontSize={11} />
-                                <Radar name="Atingimento %" dataKey="atingimento" stroke="#0f4c81" fill="#0f4c81" fillOpacity={0.25} />
+                                <Radar name="Atingimento %" dataKey="atingimento" stroke="#F44B63" fill="#F44B63" fillOpacity={0.25} />
                                 <Tooltip formatter={(v) => `${v}%`} />
                             </RadarChart>
                         </ResponsiveContainer>
